@@ -15,6 +15,10 @@ export type LayerType =
   | 'text-3d'
   | 'model-3d'
   | 'primitive-3d'
+  | 'post-processing'
+  | 'lights'
+  | 'mirror-fx'
+  | 'hydra'
 
 // ─── Blend Modes ─────────────────────────────────────────────────────
 
@@ -75,6 +79,8 @@ export interface DisplacedMeshLayer extends LayerBase {
   wireframe: boolean
   rotation: [number, number, number]
   rotationSpeed: [number, number, number]
+  scale: number
+  audioReactive: boolean
 }
 
 // ─── Instanced Particles ────────────────────────────────────────────
@@ -156,8 +162,12 @@ export interface Text3DLayer extends LayerBase {
   text: string
   fontSize: number
   color: string
+  materialType: 'standard' | 'physical' | 'wireframe' | 'emissive'
   emissive: string
   emissiveIntensity: number
+  metalness: number
+  roughness: number
+  wireframe: boolean
   depth: number
   position: [number, number, number]
   rotation: [number, number, number]
@@ -214,6 +224,101 @@ export interface Primitive3DLayer extends LayerBase {
   audioReactive: boolean
 }
 
+// ─── Lights ──────────────────────────────────────────────────────────
+// Scene lights layer — adds ambient, directional and point lights
+
+export interface DirectionalLightConfig {
+  enabled: boolean
+  color: string
+  intensity: number
+  position: [number, number, number]
+}
+
+export interface PointLightConfig {
+  enabled: boolean
+  color: string
+  intensity: number
+  position: [number, number, number]
+  distance: number
+  decay: number
+}
+
+export interface LightsLayer extends LayerBase {
+  type: 'lights'
+  ambientEnabled: boolean
+  ambientColor: string
+  ambientIntensity: number
+  dirLights: DirectionalLightConfig[]
+  pointLights: PointLightConfig[]
+  audioReactive: boolean
+  /** Beat multiplier applied to all intensities when audioReactive=true */
+  beatIntensity: number
+}
+
+// ─── Post Processing ─────────────────────────────────────────────────
+// Composable post-processing effect chain as a configurable layer
+
+export interface PostProcessingLayer extends LayerBase {
+  type: 'post-processing'
+  // Bloom
+  bloomEnabled: boolean
+  bloomIntensity: number
+  bloomThreshold: number
+  bloomRadius: number
+  // Chromatic Aberration
+  chromaticEnabled: boolean
+  chromaticOffset: number
+  // Vignette
+  vignetteEnabled: boolean
+  vignetteDarkness: number
+  vignetteOffset: number
+  // Noise
+  noiseEnabled: boolean
+  noiseOpacity: number
+  // Audio reactivity
+  audioReactive: boolean
+}
+
+// ─── Hydra Synth ─────────────────────────────────────────────────────
+// Live-coded visuals via hydra-synth, projected as a texture onto a 3D mesh
+
+export type HydraProjection =
+  | 'plane'
+  | 'sphere'
+  | 'box'
+  | 'torus'
+  | 'torusKnot'
+  | 'cylinder'
+
+export interface HydraLayer extends LayerBase {
+  type: 'hydra'
+  /** Hydra sketch code evaluated in the synth context */
+  code: string
+  /** Geometry to project the Hydra canvas onto */
+  projection: HydraProjection
+  /** Offscreen canvas resolution [width, height] */
+  resolution: [number, number]
+  position: [number, number, number]
+  rotation: [number, number, number]
+  rotationSpeed: [number, number, number]
+  scale: number
+  audioReactive: boolean
+}
+
+// ─── Mirror FX ───────────────────────────────────────────────────────
+// Distorts the entire scene with mirrors and kaleidoscopes
+
+export interface MirrorFXLayer extends LayerBase {
+  type: 'mirror-fx'
+  // Mirror Mode (0: None, 1: Horizontal, 2: Vertical, 3: Quad, 4: Kaleidoscope)
+  mode: number
+  // Kaleidoscope specific
+  sides: number
+  angle: number
+  // Audio reactivity
+  audioReactive: boolean
+}
+
 // ─── Union Layer Config ──────────────────────────────────────────────
 
 export type LayerConfig =
@@ -226,6 +331,10 @@ export type LayerConfig =
   | Text3DLayer
   | Model3DLayer
   | Primitive3DLayer
+  | PostProcessingLayer
+  | MirrorFXLayer
+  | LightsLayer
+  | HydraLayer
 
 // ─── Scene Preset ────────────────────────────────────────────────────
 
