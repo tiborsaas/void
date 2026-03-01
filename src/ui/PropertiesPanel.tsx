@@ -2,16 +2,20 @@
 // Opens when a layer is selected. Shows base props (opacity, blendMode) +
 // type-specific controls for every layer type.
 
-import { usePresetStore, useGlobalStore } from '../engine/store'
+import { useState } from 'react'
+import { usePresetStore } from '../engine/store'
+import { modelStorage } from '../engine/ModelStorage'
 import type {
     LayerConfig, LayerBlendMode, MeshGeometryType, PrimitiveShape,
-    WireframeShape, FBOSeedPattern,
+    WireframeShape, FBOSeedPattern, DirectionalLightConfig, PointLightConfig,
+    HydraProjection,
 } from '../types/layers'
 import {
     SliderField, Vec2Field, Vec3Field, ColorField, ToggleField,
     SelectField, NumberField, TextareaField, TextInputField,
     UniformsEditor, SectionTitle,
 } from './properties/fields'
+import { HydraCodeEditor } from './HydraCodeEditor'
 
 // ─── Geometry / shape arg metadata ───────────────────────────────────────────
 
@@ -48,18 +52,10 @@ function ShaderPlanePanel({ layer, update }: PanelProps<'shader-plane'>) {
 
     return (
         <>
-            <SectionTitle>Vertex Shader</SectionTitle>
-            <TextareaField label="GLSL" value={config.vertexShader}
-                onChange={(v) => update({ vertexShader: v })} />
-
-            <SectionTitle>Fragment Shader</SectionTitle>
-            <TextareaField label="GLSL" value={config.fragmentShader}
-                onChange={(v) => update({ fragmentShader: v })} />
-
-            <SectionTitle>Shader Uniforms</SectionTitle>
+            <SectionTitle>Parameters</SectionTitle>
             <UniformsEditor uniforms={config.uniforms} onChange={patchUniform} />
             {Object.keys(config.uniforms).length === 0 && (
-                <div className="prop-hint">No configurable uniforms defined for this shader.</div>
+                <div className="prop-hint">No configurable parameters for this shader.</div>
             )}
         </>
     )
@@ -101,10 +97,15 @@ function DisplacedMeshPanel({ layer, update }: PanelProps<'displaced-mesh'>) {
             <ToggleField label="Wireframe" value={config.wireframe} onChange={(v) => update({ wireframe: v })} />
 
             <SectionTitle>Transform</SectionTitle>
+            <SliderField label="Scale" value={config.scale ?? 1} min={0.01} max={10} step={0.01}
+                onChange={(v) => update({ scale: v })} />
             <Vec3Field label="Rotation Speed" value={config.rotationSpeed} min={-5} max={5} step={0.01}
                 onChange={(v) => update({ rotationSpeed: v })} />
             <Vec3Field label="Init Rotation" value={config.rotation} min={-Math.PI} max={Math.PI} step={0.01}
                 onChange={(v) => update({ rotation: v })} />
+
+            <SectionTitle>Audio</SectionTitle>
+            <ToggleField label="Audio Reactive" value={config.audioReactive ?? false} onChange={(v) => update({ audioReactive: v })} />
 
             {Object.keys(config.uniforms).length > 0 && (
                 <>
@@ -315,10 +316,29 @@ function Text3DPanel({ layer, update }: PanelProps<'text-3d'>) {
                 onChange={(v) => update({ depth: v })} />
 
             <SectionTitle>Material</SectionTitle>
+            <SelectField label="Type" value={config.materialType || 'standard'}
+                options={[{ value: 'standard', label: 'Standard' }, { value: 'physical', label: 'Physical' }, { value: 'emissive', label: 'Emissive' }, { value: 'wireframe', label: 'Wireframe' }]}
+                onChange={(v) => update({ materialType: v })} />
             <ColorField label="Color" value={config.color} onChange={(v) => update({ color: v })} />
-            <ColorField label="Emissive" value={config.emissive} onChange={(v) => update({ emissive: v })} />
-            <SliderField label="Emissive Intensity" value={config.emissiveIntensity} min={0} max={5} step={0.05}
-                onChange={(v) => update({ emissiveIntensity: v })} />
+            {(config.materialType === 'emissive') && (
+                <>
+                    <ColorField label="Emissive" value={config.emissive} onChange={(v) => update({ emissive: v })} />
+                    <SliderField label="Emissive Intensity" value={config.emissiveIntensity} min={0} max={5} step={0.05}
+                        onChange={(v) => update({ emissiveIntensity: v })} />
+                </>
+            )}
+            {(config.materialType === 'standard' || config.materialType === 'physical') && (
+                <>
+                    <SliderField label="Metalness" value={config.metalness ?? 0} min={0} max={1} step={0.01}
+                        onChange={(v) => update({ metalness: v })} />
+                    <SliderField label="Roughness" value={config.roughness ?? 1} min={0} max={1} step={0.01}
+                        onChange={(v) => update({ roughness: v })} />
+                </>
+            )}
+            {config.materialType !== 'wireframe' && (
+                <ToggleField label="Wireframe Override" value={config.wireframe ?? false}
+                    onChange={(v) => update({ wireframe: v })} />
+            )}
 
             <SectionTitle>Transform</SectionTitle>
             <Vec3Field label="Position" value={config.position} min={-10} max={10} step={0.05}
@@ -332,15 +352,33 @@ function Text3DPanel({ layer, update }: PanelProps<'text-3d'>) {
 
 function Model3DPanel({ layer, update }: PanelProps<'model-3d'>) {
     const config = layer as Extract<LayerConfig, { type: 'model-3d' }>
+
+    const handleFilePick = () => {
+        const input = document.createElement('input')
+        input.type = 'file'
+        input.accept = '.glb,.gltf'
+        input.onchange = async (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0]
+            if (!file) return
+            const key = `model-${Date.now()}`
+            await modelStorage.saveModel(key, file)
+            update({ modelKey: key, filename: file.name })
+        }
+        input.click()
+    }
+
     return (
         <>
             <SectionTitle>Model</SectionTitle>
             <div className="param-row">
                 <span className="param-label">File</span>
-                <span className="param-value" style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <span className="param-value" style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.75em' }}>
                     {config.filename || '(none)'}
                 </span>
             </div>
+            <button className="add-layer-btn" style={{ marginTop: 4 }} onClick={handleFilePick}>
+                {config.filename ? 'Replace GLB…' : 'Load GLB…'}
+            </button>
 
             <SectionTitle>Transform</SectionTitle>
             <SliderField label="Scale" value={config.scale} min={0.01} max={20} step={0.01}
@@ -413,8 +451,255 @@ function Primitive3DPanel({ layer, update }: PanelProps<'primitive-3d'>) {
     )
 }
 
+function PostProcessingPanel({ layer, update }: PanelProps<'post-processing'>) {
+    const config = layer as Extract<LayerConfig, { type: 'post-processing' }>
+    return (
+        <>
+            <SectionTitle>Bloom</SectionTitle>
+            <ToggleField label="Enabled" value={config.bloomEnabled} onChange={(v) => update({ bloomEnabled: v })} />
+            {config.bloomEnabled && (
+                <>
+                    <SliderField label="Intensity" value={config.bloomIntensity} min={0} max={5} step={0.05}
+                        onChange={(v) => update({ bloomIntensity: v })} />
+                    <SliderField label="Threshold" value={config.bloomThreshold} min={0} max={1} step={0.01}
+                        onChange={(v) => update({ bloomThreshold: v })} />
+                    <SliderField label="Radius" value={config.bloomRadius} min={0} max={1} step={0.01}
+                        onChange={(v) => update({ bloomRadius: v })} />
+                </>
+            )}
+
+            <SectionTitle>Chromatic Aberration</SectionTitle>
+            <ToggleField label="Enabled" value={config.chromaticEnabled} onChange={(v) => update({ chromaticEnabled: v })} />
+            {config.chromaticEnabled && (
+                <SliderField label="Offset" value={config.chromaticOffset} min={0} max={0.05} step={0.001}
+                    onChange={(v) => update({ chromaticOffset: v })} />
+            )}
+
+            <SectionTitle>Vignette</SectionTitle>
+            <ToggleField label="Enabled" value={config.vignetteEnabled} onChange={(v) => update({ vignetteEnabled: v })} />
+            {config.vignetteEnabled && (
+                <>
+                    <SliderField label="Darkness" value={config.vignetteDarkness} min={0} max={1} step={0.01}
+                        onChange={(v) => update({ vignetteDarkness: v })} />
+                    <SliderField label="Offset" value={config.vignetteOffset} min={0} max={1} step={0.01}
+                        onChange={(v) => update({ vignetteOffset: v })} />
+                </>
+            )}
+
+            <SectionTitle>Noise</SectionTitle>
+            <ToggleField label="Enabled" value={config.noiseEnabled} onChange={(v) => update({ noiseEnabled: v })} />
+            {config.noiseEnabled && (
+                <SliderField label="Opacity" value={config.noiseOpacity} min={0} max={0.5} step={0.01}
+                    onChange={(v) => update({ noiseOpacity: v })} />
+            )}
+
+            <SectionTitle>Audio</SectionTitle>
+            <ToggleField label="Audio Reactive" value={config.audioReactive} onChange={(v) => update({ audioReactive: v })} />
+        </>
+    )
+}
+
+function MirrorFXPanel({ layer, update }: PanelProps<'mirror-fx'>) {
+    const config = layer as Extract<LayerConfig, { type: 'mirror-fx' }>
+    return (
+        <>
+            <SectionTitle>Mirror Type</SectionTitle>
+            <SelectField
+                label="Mode"
+                value={String(config.mode) as '0' | '1' | '2' | '3' | '4'}
+                options={[
+                    { value: '0', label: 'None' },
+                    { value: '1', label: 'Horizontal (Left ↔ Right)' },
+                    { value: '2', label: 'Vertical (Top ↕ Bottom)' },
+                    { value: '3', label: 'Quad (4-way)' },
+                    { value: '4', label: 'Kaleidoscope' },
+                ]}
+                onChange={(v) => update({ mode: parseInt(v, 10) })}
+            />
+
+            {config.mode === 4 && (
+                <>
+                    <SectionTitle>Kaleidoscope</SectionTitle>
+                    <SliderField label="Sides" value={config.sides} min={2} max={24} step={1}
+                        onChange={(v) => update({ sides: v })} />
+                    <SliderField label="Angle Offset" value={config.angle} min={0} max={Math.PI * 2} step={0.01}
+                        onChange={(v) => update({ angle: v })} />
+                </>
+            )}
+
+            <SectionTitle>Audio</SectionTitle>
+            <ToggleField label="Audio Reactive" value={config.audioReactive} onChange={(v) => update({ audioReactive: v })} />
+        </>
+    )
+}
+
+function LightsPanel({ layer, update }: PanelProps<'lights'>) {
+    const config = layer as Extract<LayerConfig, { type: 'lights' }>
+
+    const updateDir = (i: number, patch: Partial<DirectionalLightConfig>) => {
+        const next = config.dirLights.map((d, j) => j === i ? { ...d, ...patch } : d)
+        update({ dirLights: next })
+    }
+    const updatePoint = (i: number, patch: Partial<PointLightConfig>) => {
+        const next = config.pointLights.map((p, j) => j === i ? { ...p, ...patch } : p)
+        update({ pointLights: next })
+    }
+
+    return (
+        <>
+            <SectionTitle>Ambient</SectionTitle>
+            <ToggleField label="Enabled" value={config.ambientEnabled} onChange={(v) => update({ ambientEnabled: v })} />
+            {config.ambientEnabled && (
+                <>
+                    <ColorField label="Color" value={config.ambientColor} onChange={(v) => update({ ambientColor: v })} />
+                    <SliderField label="Intensity" value={config.ambientIntensity} min={0} max={5} step={0.05}
+                        onChange={(v) => update({ ambientIntensity: v })} />
+                </>
+            )}
+
+            <SectionTitle>Directional Lights</SectionTitle>
+            {config.dirLights.map((dl, i) => (
+                <div key={i} className="attractor-block">
+                    <div className="attractor-block__header">
+                        <span className="attractor-block__title">Dir {i + 1}</span>
+                        <button className="attractor-block__remove"
+                            onClick={() => update({ dirLights: config.dirLights.filter((_, j) => j !== i) })}>✕</button>
+                    </div>
+                    <ToggleField label="Enabled" value={dl.enabled} onChange={(v) => updateDir(i, { enabled: v })} />
+                    <ColorField label="Color" value={dl.color} onChange={(v) => updateDir(i, { color: v })} />
+                    <SliderField label="Intensity" value={dl.intensity} min={0} max={5} step={0.05}
+                        onChange={(v) => updateDir(i, { intensity: v })} />
+                    <Vec3Field label="Position" value={dl.position} min={-20} max={20} step={0.5}
+                        onChange={(v) => updateDir(i, { position: v })} />
+                </div>
+            ))}
+            <button className="add-layer-btn" style={{ marginTop: 4 }}
+                onClick={() => update({ dirLights: [...config.dirLights, { enabled: true, color: '#ffffff', intensity: 1, position: [5, 10, 5] }] })}>
+                + Add Dir Light
+            </button>
+
+            <SectionTitle>Point Lights</SectionTitle>
+            {config.pointLights.map((pl, i) => (
+                <div key={i} className="attractor-block">
+                    <div className="attractor-block__header">
+                        <span className="attractor-block__title">Point {i + 1}</span>
+                        <button className="attractor-block__remove"
+                            onClick={() => update({ pointLights: config.pointLights.filter((_, j) => j !== i) })}>✕</button>
+                    </div>
+                    <ToggleField label="Enabled" value={pl.enabled} onChange={(v) => updatePoint(i, { enabled: v })} />
+                    <ColorField label="Color" value={pl.color} onChange={(v) => updatePoint(i, { color: v })} />
+                    <SliderField label="Intensity" value={pl.intensity} min={0} max={10} step={0.1}
+                        onChange={(v) => updatePoint(i, { intensity: v })} />
+                    <Vec3Field label="Position" value={pl.position} min={-20} max={20} step={0.5}
+                        onChange={(v) => updatePoint(i, { position: v })} />
+                    <SliderField label="Distance" value={pl.distance} min={0} max={50} step={0.5}
+                        onChange={(v) => updatePoint(i, { distance: v })} />
+                    <SliderField label="Decay" value={pl.decay} min={0} max={4} step={0.1}
+                        onChange={(v) => updatePoint(i, { decay: v })} />
+                </div>
+            ))}
+            <button className="add-layer-btn" style={{ marginTop: 4 }}
+                onClick={() => update({ pointLights: [...config.pointLights, { enabled: true, color: '#ff8844', intensity: 2, position: [0, 3, 0], distance: 20, decay: 2 }] })}>
+                + Add Point Light
+            </button>
+
+            <SectionTitle>Audio</SectionTitle>
+            <ToggleField label="Audio Reactive" value={config.audioReactive} onChange={(v) => update({ audioReactive: v })} />
+            {config.audioReactive && (
+                <SliderField label="Beat Intensity" value={config.beatIntensity} min={0} max={3} step={0.05}
+                    onChange={(v) => update({ beatIntensity: v })} />
+            )}
+        </>
+    )
+}
+
 // ─── Panel dispatch helper ────────────────────────────────────────────────────
 
+function HydraPanel({ layer, update }: PanelProps<'hydra'>) {
+    const config = layer as Extract<LayerConfig, { type: 'hydra' }>
+    const [editorOpen, setEditorOpen] = useState(false)
+
+    return (
+        <>
+            <SectionTitle>Sketch</SectionTitle>
+            <div style={{ marginBottom: 8 }}>
+                <button
+                    className="hydra-edit-code-btn"
+                    onClick={() => setEditorOpen(true)}
+                >
+                    〰 Edit Hydra Code
+                </button>
+            </div>
+            <div className="hydra-code-preview">
+                {config.code.split('\n').slice(0, 3).join('\n')}
+                {config.code.split('\n').length > 3 ? '\n…' : ''}
+            </div>
+
+            <SectionTitle>Projection</SectionTitle>
+            <SelectField
+                label="Shape"
+                value={config.projection}
+                options={(['plane', 'sphere', 'box', 'torus', 'torusKnot', 'cylinder'] as HydraProjection[])
+                    .map((v) => ({ value: v, label: v }))}
+                onChange={(v) => update({ projection: v })}
+            />
+
+            {config.projection !== 'plane' && (
+                <SliderField
+                    label="Scale"
+                    value={config.scale}
+                    min={0.1} max={10} step={0.1}
+                    onChange={(v) => update({ scale: v })}
+                />
+            )}
+
+            <Vec2Field
+                label="Resolution"
+                value={config.resolution}
+                min={128} max={2048} step={128}
+                onChange={(v) => update({ resolution: v as [number, number] })}
+            />
+
+            <SectionTitle>Transform</SectionTitle>
+            {config.projection !== 'plane' && (
+                <Vec3Field
+                    label="Position"
+                    value={config.position}
+                    min={-20} max={20} step={0.1}
+                    onChange={(v) => update({ position: v as [number, number, number] })}
+                />
+            )}
+            <Vec3Field
+                label="Rotation"
+                value={config.rotation}
+                min={-Math.PI} max={Math.PI} step={0.01}
+                onChange={(v) => update({ rotation: v as [number, number, number] })}
+            />
+            <Vec3Field
+                label="Rotation Speed"
+                value={config.rotationSpeed}
+                min={-2} max={2} step={0.01}
+                onChange={(v) => update({ rotationSpeed: v as [number, number, number] })}
+            />
+
+            <SectionTitle>Audio</SectionTitle>
+            <ToggleField
+                label="Audio Reactive"
+                value={config.audioReactive}
+                onChange={(v) => update({ audioReactive: v })}
+            />
+
+            {editorOpen && (
+                <HydraCodeEditor
+                    layerId={config.id}
+                    initialCode={config.code}
+                    onRun={(code) => update({ code })}
+                    onClose={() => setEditorOpen(false)}
+                />
+            )}
+        </>
+    )
+}
 type PanelProps<T extends LayerConfig['type']> = {
     layer: LayerConfig
     update: (patch: Partial<LayerConfig>) => void
@@ -431,6 +716,10 @@ function TypePanel({ layer, update }: { layer: LayerConfig; update: (p: Partial<
         case 'text-3d': return <Text3DPanel layer={layer} update={update} />
         case 'model-3d': return <Model3DPanel layer={layer} update={update} />
         case 'primitive-3d': return <Primitive3DPanel layer={layer} update={update} />
+        case 'post-processing': return <PostProcessingPanel layer={layer} update={update} />
+        case 'mirror-fx': return <MirrorFXPanel layer={layer} update={update} />
+        case 'lights': return <LightsPanel layer={layer} update={update} />
+        case 'hydra': return <HydraPanel layer={layer} update={update} />
     }
 }
 
@@ -444,13 +733,20 @@ const BLEND_OPTIONS: { value: LayerBlendMode; label: string }[] = [
 ]
 
 export function PropertiesPanel() {
-    const editorOpen = useGlobalStore((s) => s.editorOpen)
     const activePreset = usePresetStore((s) => s.presets[s.activePresetId])
     const selectedLayerId = usePresetStore((s) => s.editor.selectedLayerId)
     const selectLayer = usePresetStore((s) => s.selectLayer)
     const updateLayer = usePresetStore((s) => s.updateLayer)
 
-    if (!editorOpen || !activePreset || !selectedLayerId) return null
+    if (!activePreset || !selectedLayerId) {
+        return (
+            <div className="properties-panel properties-panel--empty">
+                <div className="properties-panel__placeholder">
+                    Select a layer to edit properties
+                </div>
+            </div>
+        )
+    }
 
     const layer = activePreset.layers.find((l) => l.id === selectedLayerId)
     if (!layer) return null

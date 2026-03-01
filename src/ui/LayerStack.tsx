@@ -3,8 +3,11 @@
 // visibility/name editing, blend mode, and an "Add Layer" type picker.
 
 import { useState, useRef, useCallback } from 'react'
-import { usePresetStore, useGlobalStore } from '../engine/store'
-import type { LayerType, LayerConfig, LayerBlendMode, MeshGeometryType, PrimitiveShape } from '../types/layers'
+import { usePresetStore } from '../engine/store'
+import type { LayerType, LayerConfig, LayerBlendMode, MeshGeometryType, PrimitiveShape, DirectionalLightConfig, PointLightConfig } from '../types/layers'
+import { createVoidTunnelLayer, createGlitchMatrixLayer, createTerrainLayer } from '../presets/factory'
+import LIQUID_VERTEX from '../shaders/scenes/liquid-vertex.glsl'
+import LIQUID_FRAGMENT from '../shaders/scenes/liquid-fragment.glsl'
 
 // ─── Layer type metadata ──────────────────────────────────────────────────────
 
@@ -18,6 +21,10 @@ export const LAYER_TYPE_ICONS: Record<LayerType, string> = {
     'text-3d': 'T³',
     'model-3d': '▣',
     'primitive-3d': '◇',
+    'post-processing': '✦',
+    'mirror-fx': '◨',
+    'lights': '☀',
+    'hydra': '〰',
 }
 
 export const LAYER_TYPE_LABELS: Record<LayerType, string> = {
@@ -30,6 +37,10 @@ export const LAYER_TYPE_LABELS: Record<LayerType, string> = {
     'text-3d': 'Text 3D',
     'model-3d': 'Model 3D',
     'primitive-3d': 'Primitive',
+    'post-processing': 'Post FX',
+    'mirror-fx': 'Mirror FX',
+    'lights': 'Lights',
+    'hydra': 'Hydra Synth',
 }
 
 const BLEND_CYCLE: LayerBlendMode[] = ['normal', 'additive', 'multiply', 'screen']
@@ -60,12 +71,18 @@ export function createDefaultLayer(type: LayerType): LayerConfig {
                 ...base, type: 'displaced-mesh',
                 geometry: 'icosahedron' as MeshGeometryType,
                 geometryArgs: [2, 64],
-                vertexShader: `varying vec3 vNormal;\nvoid main() { vNormal = normal; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-                fragmentShader: `varying vec3 vNormal;\nvoid main() { gl_FragColor = vec4(vNormal*0.5+0.5, 1.0); }`,
-                uniforms: {},
+                vertexShader: LIQUID_VERTEX,
+                fragmentShader: LIQUID_FRAGMENT,
+                uniforms: {
+                    uNoiseScale: { value: 1.5, min: 0.5, max: 5, step: 0.1, label: 'Noise Scale' },
+                    uDisplacement: { value: 1, min: 0.1, max: 3, step: 0.05, label: 'Displacement' },
+                    uFresnelPower: { value: 3, min: 1, max: 8, step: 0.1, label: 'Fresnel Power' },
+                },
                 wireframe: false,
-                rotation: [0, 0, 0],
-                rotationSpeed: [0, 0.3, 0],
+                rotation: [0, 0, 0] as [number, number, number],
+                rotationSpeed: [0.1, 0.15, 0.05] as [number, number, number],
+                scale: 1,
+                audioReactive: true,
             }
         case 'instanced-particles':
             return {
@@ -106,8 +123,9 @@ export function createDefaultLayer(type: LayerType): LayerConfig {
         case 'text-3d':
             return {
                 ...base, type: 'text-3d',
-                text: 'VOID', fontSize: 1, color: '#ffffff', emissive: '#7b5cff',
-                emissiveIntensity: 0.5, depth: 0.2,
+                text: 'VOID', fontSize: 1, color: '#ffffff',
+                materialType: 'standard', metalness: 0, roughness: 1, wireframe: false,
+                emissive: '#7b5cff', emissiveIntensity: 0.5, depth: 0.2,
                 position: [0, 0, 0], rotation: [0, 0, 0], rotationSpeed: [0, 0.3, 0],
                 audioReactive: true,
             }
@@ -127,13 +145,58 @@ export function createDefaultLayer(type: LayerType): LayerConfig {
                 position: [0, 0, 0], rotation: [0, 0, 0], rotationSpeed: [0, 0.3, 0],
                 scale: 1, audioReactive: true,
             }
+        case 'post-processing':
+            return {
+                ...base, type: 'post-processing',
+                bloomEnabled: true, bloomIntensity: 1.5, bloomThreshold: 0.6, bloomRadius: 0.8,
+                chromaticEnabled: true, chromaticOffset: 0.002,
+                vignetteEnabled: true, vignetteDarkness: 0.7, vignetteOffset: 0.3,
+                noiseEnabled: true, noiseOpacity: 0.08,
+                audioReactive: true,
+            }
+        case 'mirror-fx':
+            return {
+                ...base, type: 'mirror-fx',
+                mode: 1, // 1: Horizontal by default
+                sides: 6,
+                angle: 0,
+                audioReactive: true,
+            }
+        case 'lights':
+            return {
+                ...base, type: 'lights',
+                ambientEnabled: true,
+                ambientColor: '#ffffff',
+                ambientIntensity: 0.4,
+                dirLights: [
+                    { enabled: true, color: '#ffffff', intensity: 1.5, position: [5, 10, 5] } as DirectionalLightConfig,
+                    { enabled: true, color: '#8888ff', intensity: 0.5, position: [-5, 2, -3] } as DirectionalLightConfig,
+                ] as DirectionalLightConfig[],
+                pointLights: [
+                    { enabled: false, color: '#ff6644', intensity: 2, position: [0, 3, 0], distance: 20, decay: 2 } as PointLightConfig,
+                ] as PointLightConfig[],
+                audioReactive: true,
+                beatIntensity: 1.0,
+            }
+        case 'hydra':
+            return {
+                ...base, type: 'hydra',
+                blendMode: 'additive',
+                code: `osc(60, 0.1, 1.4)\n  .kaleid(4)\n  .color(0.9, 0.2, 0.8)\n  .out()`,
+                projection: 'plane',
+                resolution: [1280, 720],
+                position: [0, 0, 0],
+                rotation: [0, 0, 0],
+                rotationSpeed: [0, 0, 0],
+                scale: 2,
+                audioReactive: false,
+            }
     }
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function LayerStack() {
-    const editorOpen = useGlobalStore((s) => s.editorOpen)
     const activePreset = usePresetStore((s) => s.presets[s.activePresetId])
     const selectedLayerId = usePresetStore((s) => s.editor.selectedLayerId)
     const selectLayer = usePresetStore((s) => s.selectLayer)
@@ -144,6 +207,7 @@ export function LayerStack() {
     const updateLayer = usePresetStore((s) => s.updateLayer)
 
     const [showTypePicker, setShowTypePicker] = useState(false)
+    const [showShaderSubPicker, setShowShaderSubPicker] = useState(false)
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editName, setEditName] = useState('')
     // Visual drag-over indicator (React state is fine since it's display-only)
@@ -153,10 +217,21 @@ export function LayerStack() {
     const dragSrcIdxRef = useRef<number | null>(null)
 
     const handleAddLayer = useCallback((type: LayerType) => {
+        if (type === 'shader-plane') {
+            setShowShaderSubPicker(true)
+            return
+        }
         const layer = createDefaultLayer(type)
         addLayer(layer)
         selectLayer(layer.id)
         setShowTypePicker(false)
+    }, [addLayer, selectLayer])
+
+    const handleAddShaderLayer = useCallback((layer: LayerConfig) => {
+        addLayer(layer)
+        selectLayer(layer.id)
+        setShowTypePicker(false)
+        setShowShaderSubPicker(false)
     }, [addLayer, selectLayer])
 
     const cycleBlend = useCallback((e: React.MouseEvent, layer: LayerConfig) => {
@@ -206,7 +281,7 @@ export function LayerStack() {
         setDragOverIdx(null)
     }
 
-    if (!editorOpen || !activePreset) return null
+    if (!activePreset) return null
 
     // Display reversed: top of list = highest array index = front-most layer
     const layers = activePreset.layers
@@ -307,12 +382,12 @@ export function LayerStack() {
             <div className="layer-stack__footer">
                 <button
                     className="layer-stack__add-btn"
-                    onClick={() => setShowTypePicker((v) => !v)}
+                    onClick={() => { setShowTypePicker((v) => !v); setShowShaderSubPicker(false) }}
                 >
                     + Add Layer
                 </button>
 
-                {showTypePicker && (
+                {showTypePicker && !showShaderSubPicker && (
                     <div className="layer-type-picker">
                         {(Object.keys(LAYER_TYPE_ICONS) as LayerType[]).map((type) => (
                             <button
@@ -324,6 +399,45 @@ export function LayerStack() {
                                 <span>{LAYER_TYPE_LABELS[type]}</span>
                             </button>
                         ))}
+                    </div>
+                )}
+
+                {showTypePicker && showShaderSubPicker && (
+                    <div className="layer-type-picker">
+                        <button
+                            className="layer-type-picker__back"
+                            onClick={() => setShowShaderSubPicker(false)}
+                        >
+                            ← Back
+                        </button>
+                        <button
+                            className="layer-type-picker__item"
+                            onClick={() => handleAddShaderLayer(createDefaultLayer('shader-plane'))}
+                        >
+                            <span className="layer-type-picker__icon">▦</span>
+                            <span>UV Rotate</span>
+                        </button>
+                        <button
+                            className="layer-type-picker__item"
+                            onClick={() => handleAddShaderLayer(createVoidTunnelLayer())}
+                        >
+                            <span className="layer-type-picker__icon">◎</span>
+                            <span>Void Tunnel</span>
+                        </button>
+                        <button
+                            className="layer-type-picker__item"
+                            onClick={() => handleAddShaderLayer(createGlitchMatrixLayer())}
+                        >
+                            <span className="layer-type-picker__icon">▤</span>
+                            <span>Glitch Matrix</span>
+                        </button>
+                        <button
+                            className="layer-type-picker__item"
+                            onClick={() => handleAddShaderLayer(createTerrainLayer())}
+                        >
+                            <span className="layer-type-picker__icon">▲</span>
+                            <span>Terrain</span>
+                        </button>
                     </div>
                 )}
 

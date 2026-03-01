@@ -358,6 +358,28 @@
   font-size: 16px;
 }
 
+.layer-type-picker__back {
+  grid-column: 1 / -1;
+  padding: 4px 8px;
+  border: 1px solid var(--void-border);
+  border-radius: var(--void-radius-sm);
+  background: transparent;
+  color: var(--void-text-dim);
+  font-family: var(--void-font);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--void-transition);
+}
+
+.layer-type-picker__back:hover {
+  color: var(--void-text);
+  border-color: var(--void-accent);
+  background: var(--void-accent-dim);
+}
+
 /* ─── Parameter Controls ──────────────────────────────────────────── */
 
 .param-row {
@@ -652,20 +674,90 @@
   border-radius: 2px;
 }
 
-/* ─── Layer Stack (left panel) ───────────────────────────────────── */
+/* ─── Floating Scene Editor Panel ───────────────────────────────── */
 
-.layer-stack-panel {
+.scene-editor-panel {
   position: fixed;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 260px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 300;
   display: flex;
   flex-direction: column;
+  width: 620px;
+  max-width: calc(100vw - 32px);
+  height: min(680px, calc(100vh - 80px));
+  max-height: calc(100vh - 80px);
   background: var(--void-surface);
-  border-right: 1px solid var(--void-border);
+  border: 1px solid var(--void-border);
+  border-radius: var(--void-radius);
   backdrop-filter: blur(16px);
+  overflow: hidden;
+  font-family: var(--void-font);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+}
+
+.scene-editor-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--void-border);
+  flex-shrink: 0;
+  cursor: grab;
+  user-select: none;
+}
+
+.scene-editor-panel__header:active {
+  cursor: grabbing;
+}
+
+.scene-editor-panel__drag-hint {
+  font-size: 12px;
+  color: var(--void-text-muted);
+  flex-shrink: 0;
+}
+
+.scene-editor-panel__title {
+  flex: 1;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--void-text-dim);
+}
+
+.scene-editor-panel__close {
+  background: none;
+  border: none;
+  color: var(--void-text-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color var(--void-transition);
+  flex-shrink: 0;
+}
+
+.scene-editor-panel__close:hover {
+  color: var(--void-text);
+}
+
+.scene-editor-panel__body {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ─── Layer Stack (left column in floating panel) ────────────────── */
+
+.layer-stack-panel {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--void-border);
+  overflow: hidden;
 }
 
 .layer-stack__header {
@@ -950,20 +1042,29 @@
   background: var(--void-surface-hover);
 }
 
-/* ─── Properties Panel (right panel) ────────────────────────────── */
+/* ─── Properties Panel (right column in floating panel) ─────────── */
 
 .properties-panel {
-  position: fixed;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 340px;
-  z-index: 300;
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  background: var(--void-surface);
-  border-left: 1px solid var(--void-border);
-  backdrop-filter: blur(16px);
+  overflow: hidden;
+}
+
+.properties-panel--empty {
+  align-items: center;
+  justify-content: center;
+}
+
+.properties-panel__placeholder {
+  font-family: var(--void-font);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--void-text-muted);
+  text-align: center;
+  padding: 24px;
 }
 
 .properties-panel__header {
@@ -1366,4 +1467,280 @@
 .prop-add-btn:hover {
   border-color: var(--void-accent);
   color: var(--void-accent);
+}
+
+/* ─── Hydra Layer ───────────────────────────────────────────────── */
+
+.hydra-edit-code-btn {
+  width: 100%;
+  padding: 9px 14px;
+  background: linear-gradient(
+    135deg,
+    rgba(123, 92, 255, 0.18),
+    rgba(255, 92, 171, 0.12)
+  );
+  border: 1px solid rgba(123, 92, 255, 0.5);
+  border-radius: var(--void-radius);
+  color: var(--void-accent);
+  font-family: var(--void-font);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all var(--void-transition);
+  text-align: center;
+}
+
+.hydra-edit-code-btn:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(123, 92, 255, 0.32),
+    rgba(255, 92, 171, 0.2)
+  );
+  border-color: var(--void-accent);
+  box-shadow: 0 0 12px rgba(123, 92, 255, 0.35);
+}
+
+.hydra-code-preview {
+  font-family: var(--void-font);
+  font-size: 10px;
+  color: var(--void-text-dim);
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--void-border);
+  border-radius: var(--void-radius-sm);
+  padding: 8px 10px;
+  white-space: pre;
+  overflow: hidden;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+
+/* ─── Hydra Code Editor Overlay ─────────────────────────────────── */
+
+.hydra-editor-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hydra-editor-panel {
+  width: 82vw;
+  max-width: 1200px;
+  height: 74vh;
+  min-height: 420px;
+  background: #0d0d0f;
+  border: 1px solid rgba(123, 92, 255, 0.4);
+  border-radius: 10px;
+  box-shadow:
+    0 0 60px rgba(123, 92, 255, 0.22),
+    0 24px 80px rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.hydra-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(123, 92, 255, 0.08);
+  border-bottom: 1px solid rgba(123, 92, 255, 0.25);
+  flex-shrink: 0;
+}
+
+.hydra-editor-logo {
+  font-family: var(--void-font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--void-accent);
+  letter-spacing: 0.12em;
+}
+
+.hydra-editor-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hydra-editor-hint {
+  font-family: var(--void-font);
+  font-size: 10px;
+  color: var(--void-text-muted);
+  letter-spacing: 0.04em;
+}
+
+.hydra-editor-hint kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  font-family: var(--void-font);
+  font-size: 9px;
+  color: var(--void-text-dim);
+}
+
+.hydra-editor-run-btn {
+  padding: 6px 16px;
+  background: rgba(123, 92, 255, 0.25);
+  border: 1px solid var(--void-accent);
+  border-radius: var(--void-radius-sm);
+  color: var(--void-accent);
+  font-family: var(--void-font);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: all var(--void-transition);
+}
+
+.hydra-editor-run-btn:hover {
+  background: rgba(123, 92, 255, 0.45);
+  box-shadow: 0 0 16px rgba(123, 92, 255, 0.4);
+}
+
+.hydra-editor-close-btn {
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--void-border);
+  border-radius: var(--void-radius-sm);
+  color: var(--void-text-dim);
+  font-family: var(--void-font);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--void-transition);
+}
+
+.hydra-editor-close-btn:hover {
+  border-color: var(--void-danger);
+  color: var(--void-danger);
+}
+
+.hydra-editor-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.hydra-editor-sidebar {
+  width: 150px;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.3);
+  border-right: 1px solid var(--void-border);
+  display: flex;
+  flex-direction: column;
+  padding: 10px 0;
+  overflow-y: auto;
+  gap: 1px;
+}
+
+.hydra-editor-sidebar-title {
+  font-family: var(--void-font);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: var(--void-text-muted);
+  text-transform: uppercase;
+  padding: 6px 12px 4px;
+}
+
+.hydra-editor-sidebar-divider {
+  height: 1px;
+  background: var(--void-border);
+  margin: 6px 0;
+}
+
+.hydra-editor-example-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  color: var(--void-text-dim);
+  font-family: var(--void-font);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all var(--void-transition);
+  letter-spacing: 0.04em;
+}
+
+.hydra-editor-example-btn:hover {
+  background: rgba(123, 92, 255, 0.12);
+  color: var(--void-text);
+}
+
+.hydra-editor-ref-link {
+  display: block;
+  padding: 6px 12px;
+  color: var(--void-text-muted);
+  font-family: var(--void-font);
+  font-size: 10px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--void-transition);
+  letter-spacing: 0.04em;
+}
+
+.hydra-editor-ref-link:hover {
+  color: var(--void-accent);
+}
+
+.hydra-editor-code-area {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.hydra-editor-textarea {
+  flex: 1;
+  resize: none;
+  border: none;
+  outline: none;
+  background: #0a0a0c;
+  color: #c8e6c9;
+  font-family: "JetBrains Mono", "Fira Code", "SF Mono", monospace;
+  font-size: 14px;
+  line-height: 1.65;
+  padding: 20px 24px;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+  caret-color: var(--void-accent);
+  letter-spacing: 0.02em;
+}
+
+.hydra-editor-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.15);
+}
+
+.hydra-editor-textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.hydra-editor-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.hydra-editor-textarea::-webkit-scrollbar-thumb {
+  background: rgba(123, 92, 255, 0.3);
+  border-radius: 3px;
+}
+
+.hydra-editor-footer {
+  padding: 6px 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border-top: 1px solid var(--void-border);
+  flex-shrink: 0;
+}
+
+.hydra-editor-footer-note {
+  font-family: var(--void-font);
+  font-size: 9px;
+  color: var(--void-text-muted);
+  letter-spacing: 0.04em;
 }
