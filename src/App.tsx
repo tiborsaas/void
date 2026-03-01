@@ -17,13 +17,12 @@ function AudioInitializer() {
 }
 
 export default function App() {
-  // Seed factory presets on mount — only add ones not already in the store
-  // (persisted user edits to existing presets are preserved)
+  // Always overwrite factory presets on mount so that shader code updates,
+  // new layers, or config changes are picked up immediately — even when
+  // localStorage contains a stale copy of the preset.
+  // User-created presets (IDs not in the factory list) are never touched.
   useEffect(() => {
-    const store = usePresetStore.getState()
-    for (const preset of factoryPresets) {
-      if (!store.presets[preset.id]) store.registerPreset(preset)
-    }
+    usePresetStore.getState().registerPresets(factoryPresets)
   }, [])
 
   return (
