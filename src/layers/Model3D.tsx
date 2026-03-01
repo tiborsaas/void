@@ -18,7 +18,7 @@ function Model3DInner({ config, url }: Props & { url: string }) {
   const groupRef = useRef<THREE.Group>(null)
   const beatAccum = useRef(0)
   const gltf = useLoader(GLTFLoader, url)
-  
+
   // Clone scene and materials so multiple players/layers can use the same UI model 
   // without interfering, and to ensure we don't pollute the cached loader scene.
   const clonedScene = useMemo(() => {
@@ -111,6 +111,7 @@ export function Model3D({ config }: Props) {
 
   useEffect(() => {
     if (!config.modelKey) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBlobUrl(null)
       setIsError(false)
       return
