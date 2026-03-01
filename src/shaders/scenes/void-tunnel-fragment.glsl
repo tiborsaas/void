@@ -29,7 +29,9 @@ float map(vec3 p) {
 
 void main() {
   vec2 uv = (gl_FragCoord.xy - uResolution * 0.5) / uResolution.y;
-  vec3 ro = vec3(0.0, 0.0, uTime * uMarchSpeed);
+  float camX = sin(uTime * 0.4) * (uRepeatSize * 0.35);
+  float camY = sin(uTime * 0.27 + 1.2) * (uRepeatSize * 0.35);
+  vec3 ro = vec3(camX, camY, uTime * uMarchSpeed);
   vec3 rd = normalize(vec3(uv, 1.0));
   float t = 0.0;
   for (int i = 0; i < 80; i++) {
