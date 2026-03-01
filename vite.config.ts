@@ -8,4 +8,8 @@ export default defineConfig({
     react(),
     glsl(),
   ],
+  // hydra-synth depends on Node's `global` which is not defined in browsers
+  define: {
+    global: {},
+  },
 })
