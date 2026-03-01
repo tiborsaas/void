@@ -39,18 +39,56 @@ export function Text3D({ config }: Props) {
       groupRef.current.scale.setScalar(s)
     }
 
-    // Update emissive color with hue shift
+    // Update material colors
     groupRef.current.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
-        const emissiveColor = new THREE.Color(config.emissive)
-        emissiveColor.offsetHSL(hue, 0, 0)
-        child.material.emissive = emissiveColor
-        child.material.emissiveIntensity = config.emissiveIntensity * intensity * config.opacity
+      if (child instanceof THREE.Mesh && child.material) {
+        const mat = child.material as THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial
+
+        const baseColor = new THREE.Color(config.color)
+        baseColor.offsetHSL(hue, 0, 0)
+
+        if ('color' in mat) {
+          mat.color.copy(baseColor)
+        }
+
+        if (config.materialType === 'emissive' && 'emissive' in mat) {
+          const emissiveColor = new THREE.Color(config.emissive)
+          emissiveColor.offsetHSL(hue, 0, 0)
+          mat.emissive = emissiveColor
+          mat.emissiveIntensity = config.emissiveIntensity * intensity * config.opacity
+        } else if ('emissive' in mat && config.materialType === undefined) {
+          // backwards compatibility for prior presets
+          const emissiveColor = new THREE.Color(config.emissive)
+          emissiveColor.offsetHSL(hue, 0, 0)
+          mat.emissive = emissiveColor
+          mat.emissiveIntensity = config.emissiveIntensity * intensity * config.opacity
+        }
+
+        mat.opacity = config.opacity
       }
     })
 
     void state // used above
   })
+
+  // fallback to emissive-like logic for undefined materialType due to old presets
+  const effectiveMaterialType = config.materialType ?? 'standard'
+
+  const materialProps: Record<string, unknown> = {
+    color: config.color,
+    transparent: true,
+    opacity: config.opacity,
+    wireframe: config.wireframe || effectiveMaterialType === 'wireframe',
+    metalness: config.metalness ?? 0,
+    roughness: config.roughness ?? 1,
+    side: THREE.FrontSide,
+    ...getBlendJSXProps(config.blendMode),
+  }
+
+  if (effectiveMaterialType === 'emissive' || config.materialType === undefined) {
+    materialProps.emissive = config.emissive
+    materialProps.emissiveIntensity = config.emissiveIntensity
+  }
 
   return (
     <group
@@ -70,15 +108,11 @@ export function Text3D({ config }: Props) {
           bevelSegments={5}
         >
           {config.text}
-          <meshStandardMaterial
-            key={config.blendMode}
-            color={config.color}
-            emissive={config.emissive}
-            emissiveIntensity={config.emissiveIntensity}
-            transparent
-            opacity={config.opacity}
-            {...(getBlendJSXProps(config.blendMode) as object)}
-          />
+          {effectiveMaterialType === 'physical' ? (
+            <meshPhysicalMaterial key={config.blendMode} {...materialProps} />
+          ) : (
+            <meshStandardMaterial key={config.blendMode} {...materialProps} />
+          )}
         </DreiText3D>
       </Center>
     </group>

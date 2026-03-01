@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, Suspense } from 'react'
+import { useRef, useState, useEffect, Suspense, useMemo } from 'react'
 import { useFrame, useLoader } from '@react-three/fiber'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
@@ -18,6 +18,38 @@ function Model3DInner({ config, url }: Props & { url: string }) {
   const groupRef = useRef<THREE.Group>(null)
   const beatAccum = useRef(0)
   const gltf = useLoader(GLTFLoader, url)
+  
+  // Clone scene and materials so multiple players/layers can use the same UI model 
+  // without interfering, and to ensure we don't pollute the cached loader scene.
+  const clonedScene = useMemo(() => {
+    const scene = gltf.scene.clone()
+    scene.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        if (Array.isArray(child.material)) {
+          child.material = child.material.map((m: THREE.Material) => m.clone())
+          // Force transparency so we can fade in/out layers cleanly
+          child.material.forEach((m: THREE.Material) => { m.transparent = true })
+        } else if (child.material) {
+          child.material = (child.material as THREE.Material).clone()
+          child.material.transparent = true
+        }
+      }
+    })
+    return scene
+  }, [gltf.scene])
+
+  // Only apply blend mode structurally when the config changes to avoid `needsUpdate` every frame
+  useEffect(() => {
+    if (!clonedScene) return
+    clonedScene.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const materials = Array.isArray(child.material) ? child.material : [child.material]
+        materials.forEach(mat => {
+          if (mat) applyBlendToMaterial(mat, config.blendMode)
+        })
+      }
+    })
+  }, [clonedScene, config.blendMode])
 
   useFrame((state) => {
     if (!groupRef.current) return
@@ -43,15 +75,15 @@ function Model3DInner({ config, url }: Props & { url: string }) {
       groupRef.current.scale.setScalar(config.scale)
     }
 
-    // Apply opacity/intensity and blend mode to all meshes
-    groupRef.current.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.material) {
-        const mat = child.material as THREE.MeshStandardMaterial
-        if (mat.opacity !== undefined) {
-          mat.transparent = true
-          mat.opacity = config.opacity * intensity
-        }
-        applyBlendToMaterial(mat, config.blendMode)
+    // Apply opacity/intensity to all meshes each frame
+    clonedScene.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const materials = Array.isArray(child.material) ? child.material : [child.material]
+        materials.forEach(mat => {
+          if (mat && mat.opacity !== undefined) {
+            mat.opacity = config.opacity * intensity
+          }
+        })
       }
     })
 
@@ -65,7 +97,7 @@ function Model3DInner({ config, url }: Props & { url: string }) {
       rotation={config.rotation}
       scale={config.scale}
     >
-      <primitive object={gltf.scene.clone()} />
+      <primitive object={clonedScene} />
     </group>
   )
 }
@@ -75,26 +107,42 @@ function Model3DInner({ config, url }: Props & { url: string }) {
  */
 export function Model3D({ config }: Props) {
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
-  const [error, setError] = useState(false)
+  const [isError, setIsError] = useState(false)
 
   useEffect(() => {
+    if (!config.modelKey) {
+      setBlobUrl(null)
+      setIsError(false)
+      return
+    }
+
     let url: string | null = null
+    setIsError(false)
 
     modelStorage.getModel(config.modelKey).then((blob) => {
       if (blob) {
         url = URL.createObjectURL(blob)
         setBlobUrl(url)
       } else {
-        setError(true)
+        setIsError(true)
       }
-    }).catch(() => setError(true))
+    }).catch((err) => {
+      console.error('Failed to load model from db:', err)
+      setIsError(true)
+    })
 
     return () => {
       if (url) URL.revokeObjectURL(url)
     }
   }, [config.modelKey])
 
-  if (error || !blobUrl) return null
+  if (isError) {
+    return null
+  }
+
+  if (!blobUrl) {
+    return null
+  }
 
   return (
     <Suspense fallback={null}>

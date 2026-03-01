@@ -8,6 +8,8 @@ import { Text2D } from './Text2D'
 import { Text3D } from './Text3D'
 import { Model3D } from './Model3D'
 import { Primitive3D } from './Primitive3D'
+import { Lights } from './Lights'
+import { HydraLayer } from './HydraLayer'
 
 interface Props {
   layer: LayerConfig
@@ -15,6 +17,7 @@ interface Props {
 
 /**
  * LayerRenderer — dispatches a LayerConfig to the correct layer component.
+ * Post-processing layers are rendered separately by EffectStack — skip them here.
  */
 export function LayerRenderer({ layer }: Props) {
   if (!layer.visible) return null
@@ -38,6 +41,13 @@ export function LayerRenderer({ layer }: Props) {
       return <Model3D config={layer} />
     case 'primitive-3d':
       return <Primitive3D config={layer} />
+    case 'lights':
+      return <Lights config={layer} />
+    case 'hydra':
+      return <HydraLayer config={layer} />
+    case 'post-processing':
+      // Rendered by EffectStack, not here
+      return null
     default:
       return null
   }

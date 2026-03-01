@@ -80,11 +80,20 @@ export function DisplacedMesh({ config }: Props) {
       }
     }
 
-    // Auto-rotation — uses frame delta to avoid getDelta() triple-call bug
     if (meshRef.current) {
+      // Auto-rotation — uses frame delta to avoid getDelta() triple-call bug
       meshRef.current.rotation.x += config.rotationSpeed[0] * speed * delta
       meshRef.current.rotation.y += config.rotationSpeed[1] * speed * delta
       meshRef.current.rotation.z += config.rotationSpeed[2] * speed * delta
+
+      // Audio-reactive scale pulsing
+      const baseScale = config.scale ?? 1
+      if (config.audioReactive) {
+        const s = baseScale * (1 + beatAccum.current * 0.25 + audioRefs.amplitude * 0.15)
+        meshRef.current.scale.setScalar(s)
+      } else {
+        meshRef.current.scale.setScalar(baseScale)
+      }
     }
   })
 

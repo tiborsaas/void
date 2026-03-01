@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGlobalStore, audioRefs } from '../engine/store'
@@ -117,11 +117,29 @@ function generateSeedData(pattern: FBOSeedPattern, size: number): Float32Array {
  * The `seedPattern` field selects the initial state written into the
  * first render-target before the compute loop begins.
  */
+// Minimal fallback shaders so the material compiles even when config shaders
+// are empty (can happen when localStorage is stale on first frame).
+const _FALLBACK_FRAGMENT = /* glsl */ `
+  void main() { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); }
+`
+void _FALLBACK_FRAGMENT
+
 export function FBOSimulation({ config }: Props) {
   const displayRef = useRef<THREE.Mesh>(null)
   const beatAccum = useRef(0)
   const initialized = useRef(false)
   const frameIndex = useRef(0)
+
+  // Reset simulation whenever seed pattern or resolution changes
+  useEffect(() => {
+    initialized.current = false
+    frameIndex.current = 0
+  }, [config.seedPattern, config.size])
+
+  // If shaders are missing, render nothing.  The preset store will be fixed
+  // on the next React commit and trigger a re-mount with valid shaders.
+  // const hasShaders = !!(config.computeShader && config.displayShader)
+  // if (!hasShaders) return null
 
   const size = config.size
 
@@ -140,6 +158,28 @@ export function FBOSimulation({ config }: Props) {
 
   const computeScene = useMemo(() => new THREE.Scene(), [])
   const computeCamera = useMemo(() => new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), [])
+
+  const seedScene = useMemo(() => {
+    const scene = new THREE.Scene()
+    const geoSquare = new THREE.PlaneGeometry(0.1, 0.1)
+    const geoCircle = new THREE.CircleGeometry(0.05, 32)
+    // Reaction-diffusion expects chemical B in the green channel
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(0, 1, 0),
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: false,
+      transparent: true,
+      opacity: 1.0
+    })
+
+    const square = new THREE.Mesh(geoSquare, mat)
+    const circle = new THREE.Mesh(geoCircle, mat)
+    scene.add(square)
+    scene.add(circle)
+    return scene
+  }, [])
+  const lastSeedTime = useRef(0)
 
   const computeUniforms = useMemo(() => {
     const u: Record<string, { value: unknown }> = {
@@ -205,14 +245,26 @@ export function FBOSimulation({ config }: Props) {
     if (!initialized.current) {
       const data = generateSeedData(config.seedPattern, size)
       const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.FloatType)
+      texture.colorSpace = ''  // keep linear — no sRGB transform
       texture.needsUpdate = true
 
+      // Use a raw ShaderMaterial so float values are copied without encoding
       const tmpScene = new THREE.Scene()
       const tmpGeo = new THREE.PlaneGeometry(2, 2)
-      const tmpMat = new THREE.MeshBasicMaterial({ map: texture })
+      const tmpMat = new THREE.ShaderMaterial({
+        vertexShader: PASSTHROUGH_VERTEX,
+        fragmentShader: /* glsl */ `
+          uniform sampler2D uSeed;
+          varying vec2 vUv;
+          void main() { gl_FragColor = texture2D(uSeed, vUv); }
+        `,
+        uniforms: { uSeed: { value: texture } },
+      })
       const tmpMesh = new THREE.Mesh(tmpGeo, tmpMat)
       tmpScene.add(tmpMesh)
       gl.setRenderTarget(renderTargets[0])
+      gl.render(tmpScene, computeCamera)
+      gl.setRenderTarget(renderTargets[1])
       gl.render(tmpScene, computeCamera)
       gl.setRenderTarget(null)
       tmpGeo.dispose()
@@ -256,6 +308,20 @@ export function FBOSimulation({ config }: Props) {
       gl.render(computeScene, computeCamera)
     }
     frameIndex.current = (frameIndex.current + steps) % 2
+
+    // Seed periodically to sustain reaction
+    if (state.clock.elapsedTime - lastSeedTime.current > 1.0) {
+      lastSeedTime.current = state.clock.elapsedTime
+      seedScene.children.forEach(child => {
+        child.position.x = (Math.random() - 0.5) * 1.8
+        child.position.y = (Math.random() - 0.5) * 1.8
+        child.scale.setScalar(0.5 + Math.random())
+        child.rotation.z = Math.random() * Math.PI
+      })
+      gl.setRenderTarget(renderTargets[frameIndex.current])
+      gl.render(seedScene, computeCamera)
+    }
+
     gl.setRenderTarget(null)
 
     // Display uniforms

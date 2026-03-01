@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGlobalStore, audioRefs } from '../engine/store'
@@ -32,11 +32,17 @@ export function WireframeGeometry({ config }: Props) {
 
   const shapeRefs = useRef<THREE.LineSegments[]>([])
 
+  const geoKey = config.shapes.map((s) => `${s.shape}-${s.radius}-${s.detail}`).join('|')
   const geometries = useMemo(
     () => config.shapes.map((s) => createWireframeGeometry(s.shape, s.radius, s.detail)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [config.id],
+    [geoKey],
   )
+
+  // Dispose geometries when they're replaced or the layer is unmounted
+  useEffect(() => {
+    return () => { geometries.forEach((g) => g.dispose()) }
+  }, [geometries])
 
   useFrame((state) => {
     const speed = useGlobalStore.getState().masterSpeed
