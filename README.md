@@ -1,6 +1,8 @@
-# VOID
+# VOID VJ
 
-Visual Output Interface Deck
+Visions Of Infinite Depth
+
+![UI](assets/ui.png)
 
 # Installation
 
@@ -13,3 +15,16 @@ npm i
 ```
 npm run dev
 ```
+
+# Tech stack
+
+This is a React + TypeScript based project
+
+### Core components
+
+- React Three Fiber
+- Hydra synth
+
+### Bundler
+
+- Vite
