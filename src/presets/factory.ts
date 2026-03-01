@@ -2,33 +2,38 @@
  * Factory Presets — decomposed from the original 8 monolithic scenes into
  * composable ScenePreset configs using the new layer system.
  */
-import type { ScenePreset, ShaderPlaneLayer, PostProcessingLayer, HydraLayer } from '../types/layers'
-import type { EffectPreset } from '../types'
+import type {
+  HydraLayer,
+  PostProcessingLayer,
+  ScenePreset,
+  ShaderPlaneLayer,
+} from "../types/layers";
+import type { EffectPreset } from "../types";
 
 // Shader imports — vite-plugin-glsl resolves #include directives at build time
-import NEURAL_VERTEX from '../shaders/scenes/neural-vertex.glsl'
-import NEURAL_FRAGMENT from '../shaders/scenes/neural-fragment.glsl'
-import LIQUID_VERTEX from '../shaders/scenes/liquid-vertex.glsl'
-import LIQUID_FRAGMENT from '../shaders/scenes/liquid-fragment.glsl'
-import VOID_TUNNEL_FRAGMENT from '../shaders/scenes/void-tunnel-fragment.glsl'
-import TERRAIN_FRAGMENT from '../shaders/scenes/terrain-fragment.glsl'
-import PASSTHROUGH_VERTEX from '../shaders/scenes/passthrough-vertex.glsl'
+import NEURAL_VERTEX from "../shaders/scenes/neural-vertex.glsl";
+import NEURAL_FRAGMENT from "../shaders/scenes/neural-fragment.glsl";
+import LIQUID_VERTEX from "../shaders/scenes/liquid-vertex.glsl";
+import LIQUID_FRAGMENT from "../shaders/scenes/liquid-fragment.glsl";
+import VOID_TUNNEL_FRAGMENT from "../shaders/scenes/void-tunnel-fragment.glsl";
+import TERRAIN_FRAGMENT from "../shaders/scenes/terrain-fragment.glsl";
+import PASSTHROUGH_VERTEX from "../shaders/scenes/passthrough-vertex.glsl";
 
 // ═══════════════════════════════════════════════════════════════════════
 // Hydra Synth layer factory
 // ═══════════════════════════════════════════════════════════════════════
 
 export function createHydraLayer(overrides?: Partial<HydraLayer>): HydraLayer {
-  const id = `hydra-${Date.now()}`
+  const id = `hydra-${Date.now()}`;
   return {
     id,
-    type: 'hydra',
-    name: 'Hydra Synth',
+    type: "hydra",
+    name: "Hydra Synth",
     visible: true,
     opacity: 1,
-    blendMode: 'additive',
+    blendMode: "additive",
     code: `osc(60, 0.1, 1.4)\n  .kaleid(4)\n  .color(0.9, 0.2, 0.8)\n  .out()`,
-    projection: 'plane',
+    projection: "plane",
     resolution: [1280, 720],
     position: [0, 0, 0],
     rotation: [0, 0, 0],
@@ -36,7 +41,7 @@ export function createHydraLayer(overrides?: Partial<HydraLayer>): HydraLayer {
     scale: 2,
     audioReactive: false,
     ...overrides,
-  }
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -111,7 +116,7 @@ void main() {
 
   gl_FragColor = vec4(newA, newB, 0.0, 1.0);
 }
-`
+`;
 
 const MEMBRANE_DISPLAY = /* glsl */ `
 precision highp float;
@@ -148,13 +153,7 @@ void main() {
   vec3 col = hsvToRgb(vec3(fract(h), s, v));
   gl_FragColor = vec4(col * uIntensity, 1.0);
 }
-`
-
-
-
-
-
-
+`;
 
 // --- GlitchMatrix Shader ---
 const GLITCH_MATRIX_FRAGMENT = /* glsl */ `
@@ -230,32 +229,41 @@ void main() {
   col *= uIntensity;
   gl_FragColor = vec4(col, 1.0);
 }
-`
-
-
-
-
+`;
 
 // ═══════════════════════════════════════════════════════════════════════
 // Factory Presets
 // ═══════════════════════════════════════════════════════════════════════
 
 const DEFAULT_EFFECTS: EffectPreset[] = [
-  { name: 'bloom', enabled: true, params: { intensity: 1.5, threshold: 0.6, radius: 0.8 } },
-  { name: 'chromatic', enabled: true, params: { offset: 0.002 } },
-  { name: 'vignette', enabled: true, params: { darkness: 0.7, offset: 0.3 } },
-  { name: 'noise', enabled: true, params: { opacity: 0.08 } },
-]
+  {
+    name: "bloom",
+    enabled: true,
+    params: { intensity: 1.5, threshold: 0.6, radius: 0.8 },
+  },
+  { name: "chromatic", enabled: true, params: { offset: 0.002 } },
+  { name: "vignette", enabled: true, params: { darkness: 0.7, offset: 0.3 } },
+  { name: "noise", enabled: true, params: { opacity: 0.08 } },
+];
 
 // Helper: create a PostProcessingLayer from individual effect params
-function ppLayer(opts: Partial<Omit<PostProcessingLayer, 'id' | 'type' | 'name' | 'visible' | 'opacity' | 'blendMode'>> = {}): PostProcessingLayer {
+function ppLayer(
+  opts: Partial<
+    Omit<
+      PostProcessingLayer,
+      "id" | "type" | "name" | "visible" | "opacity" | "blendMode"
+    >
+  > = {},
+): PostProcessingLayer {
   return {
-    id: `post-processing-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-    type: 'post-processing',
-    name: 'Post FX',
+    id: `post-processing-${Date.now()}-${
+      Math.random().toString(36).slice(2, 6)
+    }`,
+    type: "post-processing",
+    name: "Post FX",
     visible: true,
     opacity: 1,
-    blendMode: 'normal',
+    blendMode: "normal",
     bloomEnabled: opts.bloomEnabled ?? true,
     bloomIntensity: opts.bloomIntensity ?? 1.5,
     bloomThreshold: opts.bloomThreshold ?? 0.6,
@@ -268,7 +276,7 @@ function ppLayer(opts: Partial<Omit<PostProcessingLayer, 'id' | 'type' | 'name' 
     noiseEnabled: opts.noiseEnabled ?? true,
     noiseOpacity: opts.noiseOpacity ?? 0.08,
     audioReactive: opts.audioReactive ?? true,
-  }
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -278,78 +286,138 @@ function ppLayer(opts: Partial<Omit<PostProcessingLayer, 'id' | 'type' | 'name' 
 export function createVoidTunnelLayer(): ShaderPlaneLayer {
   return {
     id: `shader-plane-${Date.now()}`,
-    type: 'shader-plane',
-    name: 'Void Tunnel',
+    type: "shader-plane",
+    name: "Void Tunnel",
     visible: true,
     opacity: 1,
-    blendMode: 'normal',
+    blendMode: "normal",
     vertexShader: PASSTHROUGH_VERTEX,
     fragmentShader: VOID_TUNNEL_FRAGMENT,
     uniforms: {
-      uTunnelRadius: { value: 3, min: 1, max: 8, step: 0.1, label: 'Tunnel Radius' },
-      uRepeatSize: { value: 4, min: 1, max: 8, step: 0.1, label: 'Repeat Spacing' },
-      uMarchSpeed: { value: 2, min: 0.5, max: 5, step: 0.1, label: 'March Speed' },
+      uTunnelRadius: {
+        value: 3,
+        min: 1,
+        max: 8,
+        step: 0.1,
+        label: "Tunnel Radius",
+      },
+      uRepeatSize: {
+        value: 4,
+        min: 1,
+        max: 8,
+        step: 0.1,
+        label: "Repeat Spacing",
+      },
+      uMarchSpeed: {
+        value: 2,
+        min: 0.5,
+        max: 5,
+        step: 0.1,
+        label: "March Speed",
+      },
     },
-  }
+  };
 }
 
 export function createGlitchMatrixLayer(): ShaderPlaneLayer {
   return {
     id: `shader-plane-${Date.now()}`,
-    type: 'shader-plane',
-    name: 'Glitch Matrix',
+    type: "shader-plane",
+    name: "Glitch Matrix",
     visible: true,
     opacity: 1,
-    blendMode: 'normal',
+    blendMode: "normal",
     vertexShader: PASSTHROUGH_VERTEX,
     fragmentShader: GLITCH_MATRIX_FRAGMENT,
     uniforms: {
-      uColumns: { value: 60, min: 20, max: 120, step: 1, label: 'Columns' },
-      uTrailLength: { value: 3, min: 1, max: 8, step: 0.1, label: 'Trail Length' },
-      uCharDensity: { value: 40, min: 10, max: 80, step: 1, label: 'Char Density' },
+      uColumns: { value: 60, min: 20, max: 120, step: 1, label: "Columns" },
+      uTrailLength: {
+        value: 3,
+        min: 1,
+        max: 8,
+        step: 0.1,
+        label: "Trail Length",
+      },
+      uCharDensity: {
+        value: 40,
+        min: 10,
+        max: 80,
+        step: 1,
+        label: "Char Density",
+      },
     },
-  }
+  };
 }
 
 export function createTerrainLayer(): ShaderPlaneLayer {
   return {
     id: `shader-plane-${Date.now()}`,
-    type: 'shader-plane',
-    name: 'Terrain',
+    type: "shader-plane",
+    name: "Terrain",
     visible: true,
     opacity: 1,
-    blendMode: 'normal',
+    blendMode: "normal",
     vertexShader: PASSTHROUGH_VERTEX,
     fragmentShader: TERRAIN_FRAGMENT,
     uniforms: {
-      uTerrainScale: { value: 0.3, min: 0.1, max: 1, step: 0.01, label: 'Terrain Scale' },
-      uCameraHeight: { value: 3, min: 1, max: 10, step: 0.1, label: 'Camera Height' },
-      uFogDensity: { value: 0.03, min: 0.01, max: 0.1, step: 0.005, label: 'Fog Density' },
-      uFlySpeed: { value: 2, min: 0.5, max: 5, step: 0.1, label: 'Fly Speed' },
+      uTerrainScale: {
+        value: 0.3,
+        min: 0.1,
+        max: 1,
+        step: 0.01,
+        label: "Terrain Scale",
+      },
+      uCameraHeight: {
+        value: 3,
+        min: 1,
+        max: 10,
+        step: 0.1,
+        label: "Camera Height",
+      },
+      uFogDensity: {
+        value: 0.03,
+        min: 0.01,
+        max: 0.1,
+        step: 0.005,
+        label: "Fog Density",
+      },
+      uFlySpeed: { value: 2, min: 0.5, max: 5, step: 0.1, label: "Fly Speed" },
     },
-  }
+  };
 }
 
 export const factoryPresets: ScenePreset[] = [
   // 1. Neural Mesh
   {
-    id: 'neural-mesh',
-    name: 'Neural Mesh',
+    id: "neural-mesh",
+    name: "Neural Mesh",
     layers: [
       {
-        id: 'neural-mesh-plane',
-        type: 'displaced-mesh',
-        name: 'Neural Grid',
+        id: "neural-mesh-plane",
+        type: "displaced-mesh",
+        name: "Neural Grid",
         visible: true,
         opacity: 1,
-        blendMode: 'normal',
-        geometry: 'plane',
+        blendMode: "normal",
+        geometry: "plane",
         geometryArgs: [8, 8, 128, 128],
         vertexShader: NEURAL_VERTEX,
         fragmentShader: NEURAL_FRAGMENT,
         uniforms: {
-          uNoiseScale: { value: 1.5, min: 0.1, max: 5, step: 0.1, label: 'Noise Scale' },
-          uDisplacement: { value: 0.8, min: 0, max: 3, step: 0.05, label: 'Displacement' },
+          uNoiseScale: {
+            value: 1.5,
+            min: 0.1,
+            max: 5,
+            step: 0.1,
+            label: "Noise Scale",
+          },
+          uDisplacement: {
+            value: 0.8,
+            min: 0,
+            max: 3,
+            step: 0.05,
+            label: "Displacement",
+          },
         },
         wireframe: false,
         rotation: [-0.5, 0, 0],
@@ -358,19 +426,31 @@ export const factoryPresets: ScenePreset[] = [
         audioReactive: true,
       },
       {
-        id: 'neural-mesh-wire',
-        type: 'displaced-mesh',
-        name: 'Neural Wireframe',
+        id: "neural-mesh-wire",
+        type: "displaced-mesh",
+        name: "Neural Wireframe",
         visible: true,
         opacity: 0.6,
-        blendMode: 'additive',
-        geometry: 'plane',
+        blendMode: "additive",
+        geometry: "plane",
         geometryArgs: [8, 8, 128, 128],
         vertexShader: NEURAL_VERTEX,
         fragmentShader: NEURAL_FRAGMENT,
         uniforms: {
-          uNoiseScale: { value: 1.5, min: 0.1, max: 5, step: 0.1, label: 'Noise Scale' },
-          uDisplacement: { value: 0.8, min: 0, max: 3, step: 0.05, label: 'Displacement' },
+          uNoiseScale: {
+            value: 1.5,
+            min: 0.1,
+            max: 5,
+            step: 0.1,
+            label: "Noise Scale",
+          },
+          uDisplacement: {
+            value: 0.8,
+            min: 0,
+            max: 3,
+            step: 0.05,
+            label: "Displacement",
+          },
         },
         wireframe: true,
         rotation: [-0.5, 0, 0],
@@ -381,28 +461,28 @@ export const factoryPresets: ScenePreset[] = [
       ppLayer(),
     ],
     effects: DEFAULT_EFFECTS,
-    transition: { type: 'crossfade', duration: 2.0 },
-    tags: ['geometric', 'organic', 'hypnotic'],
+    transition: { type: "crossfade", duration: 2.0 },
+    tags: ["geometric", "organic", "hypnotic"],
     builtIn: true,
   },
 
   // 2. Particle Physics
   {
-    id: 'particle-physics',
-    name: 'Particle Physics',
+    id: "particle-physics",
+    name: "Particle Physics",
     layers: [
       {
-        id: 'particles-main',
-        type: 'instanced-particles',
-        name: 'Particle Swarm',
+        id: "particles-main",
+        type: "instanced-particles",
+        name: "Particle Swarm",
         visible: true,
         opacity: 1,
-        blendMode: 'additive',
+        blendMode: "additive",
         count: 50000,
         size: 0.015,
-        geometry: 'sphere',
-        colorMode: 'velocity',
-        color: '#ffffff',
+        geometry: "sphere",
+        colorMode: "velocity",
+        color: "#ffffff",
         attractors: [
           { position: [0, 0, 0], strength: 0.5, radius: 2 },
           { position: [2, 1, -1], strength: 0.3, radius: 1.5 },
@@ -415,67 +495,122 @@ export const factoryPresets: ScenePreset[] = [
       ppLayer({ bloomIntensity: 2.0, bloomThreshold: 0.3, bloomRadius: 0.9 }),
     ],
     effects: [
-      { name: 'bloom', enabled: true, params: { intensity: 2.0, threshold: 0.3, radius: 0.9 } },
+      {
+        name: "bloom",
+        enabled: true,
+        params: { intensity: 2.0, threshold: 0.3, radius: 0.9 },
+      },
       ...DEFAULT_EFFECTS.slice(1),
     ],
-    transition: { type: 'dissolve', duration: 2.0 },
-    tags: ['particles', 'physics', 'kinetic'],
+    transition: { type: "dissolve", duration: 2.0 },
+    tags: ["particles", "physics", "kinetic"],
     builtIn: true,
   },
 
   // 3. Void Tunnel
   {
-    id: 'void-tunnel',
-    name: 'Void Tunnel',
+    id: "void-tunnel",
+    name: "Void Tunnel",
     layers: [
       {
-        id: 'tunnel-shader',
-        type: 'shader-plane',
-        name: 'Raymarched Tunnel',
+        id: "tunnel-shader",
+        type: "shader-plane",
+        name: "Raymarched Tunnel",
         visible: true,
         opacity: 1,
-        blendMode: 'normal',
+        blendMode: "normal",
         vertexShader: PASSTHROUGH_VERTEX,
         fragmentShader: VOID_TUNNEL_FRAGMENT,
         uniforms: {
-          uTunnelRadius: { value: 3, min: 1, max: 8, step: 0.1, label: 'Tunnel Radius' },
-          uRepeatSize: { value: 4, min: 1, max: 8, step: 0.1, label: 'Repeat Spacing' },
-          uMarchSpeed: { value: 2, min: 0.5, max: 5, step: 0.1, label: 'March Speed' },
+          uTunnelRadius: {
+            value: 3,
+            min: 1,
+            max: 8,
+            step: 0.1,
+            label: "Tunnel Radius",
+          },
+          uRepeatSize: {
+            value: 4,
+            min: 1,
+            max: 8,
+            step: 0.1,
+            label: "Repeat Spacing",
+          },
+          uMarchSpeed: {
+            value: 2,
+            min: 0.5,
+            max: 5,
+            step: 0.1,
+            label: "March Speed",
+          },
         },
       },
-      ppLayer({ bloomIntensity: 2.0, bloomThreshold: 0.5, chromaticOffset: 0.003, vignetteDarkness: 0.8, vignetteOffset: 0.2, noiseOpacity: 0.06 }),
+      ppLayer({
+        bloomIntensity: 2.0,
+        bloomThreshold: 0.5,
+        chromaticOffset: 0.003,
+        vignetteDarkness: 0.8,
+        vignetteOffset: 0.2,
+        noiseOpacity: 0.06,
+      }),
     ],
     effects: [
-      { name: 'bloom', enabled: true, params: { intensity: 2.0, threshold: 0.5, radius: 0.8 } },
-      { name: 'chromatic', enabled: true, params: { offset: 0.003 } },
-      { name: 'vignette', enabled: true, params: { darkness: 0.8, offset: 0.2 } },
-      { name: 'noise', enabled: true, params: { opacity: 0.06 } },
+      {
+        name: "bloom",
+        enabled: true,
+        params: { intensity: 2.0, threshold: 0.5, radius: 0.8 },
+      },
+      { name: "chromatic", enabled: true, params: { offset: 0.003 } },
+      {
+        name: "vignette",
+        enabled: true,
+        params: { darkness: 0.8, offset: 0.2 },
+      },
+      { name: "noise", enabled: true, params: { opacity: 0.06 } },
     ],
-    transition: { type: 'zoom-blur', duration: 2.5 },
-    tags: ['tunnel', 'raymarching', 'immersive', 'deep'],
+    transition: { type: "zoom-blur", duration: 2.5 },
+    tags: ["tunnel", "raymarching", "immersive", "deep"],
     builtIn: true,
   },
 
   // 4. Liquid Metal
   {
-    id: 'liquid-metal',
-    name: 'Liquid Metal',
+    id: "liquid-metal",
+    name: "Liquid Metal",
     layers: [
       {
-        id: 'liquid-mesh',
-        type: 'displaced-mesh',
-        name: 'Chrome Blob',
+        id: "liquid-mesh",
+        type: "displaced-mesh",
+        name: "Chrome Blob",
         visible: true,
         opacity: 1,
-        blendMode: 'normal',
-        geometry: 'icosahedron',
+        blendMode: "normal",
+        geometry: "icosahedron",
         geometryArgs: [2, 64],
         vertexShader: LIQUID_VERTEX,
         fragmentShader: LIQUID_FRAGMENT,
         uniforms: {
-          uNoiseScale: { value: 1.5, min: 0.5, max: 5, step: 0.1, label: 'Noise Scale' },
-          uDisplacement: { value: 1, min: 0.1, max: 3, step: 0.05, label: 'Displacement' },
-          uFresnelPower: { value: 3, min: 1, max: 8, step: 0.1, label: 'Fresnel Power' },
+          uNoiseScale: {
+            value: 1.5,
+            min: 0.5,
+            max: 5,
+            step: 0.1,
+            label: "Noise Scale",
+          },
+          uDisplacement: {
+            value: 1,
+            min: 0.1,
+            max: 3,
+            step: 0.05,
+            label: "Displacement",
+          },
+          uFresnelPower: {
+            value: 3,
+            min: 1,
+            max: 8,
+            step: 0.1,
+            label: "Fresnel Power",
+          },
         },
         wireframe: false,
         rotation: [0, 0, 0],
@@ -483,135 +618,257 @@ export const factoryPresets: ScenePreset[] = [
         scale: 1,
         audioReactive: true,
       },
-      ppLayer({ bloomIntensity: 1.0, bloomThreshold: 0.7, bloomRadius: 0.6, chromaticOffset: 0.001, vignetteDarkness: 0.5, noiseOpacity: 0.04 }),
+      ppLayer({
+        bloomIntensity: 1.0,
+        bloomThreshold: 0.7,
+        bloomRadius: 0.6,
+        chromaticOffset: 0.001,
+        vignetteDarkness: 0.5,
+        noiseOpacity: 0.04,
+      }),
     ],
     effects: [
-      { name: 'bloom', enabled: true, params: { intensity: 1.0, threshold: 0.7, radius: 0.6 } },
-      { name: 'chromatic', enabled: true, params: { offset: 0.001 } },
-      { name: 'vignette', enabled: true, params: { darkness: 0.5, offset: 0.3 } },
-      { name: 'noise', enabled: true, params: { opacity: 0.04 } },
+      {
+        name: "bloom",
+        enabled: true,
+        params: { intensity: 1.0, threshold: 0.7, radius: 0.6 },
+      },
+      { name: "chromatic", enabled: true, params: { offset: 0.001 } },
+      {
+        name: "vignette",
+        enabled: true,
+        params: { darkness: 0.5, offset: 0.3 },
+      },
+      { name: "noise", enabled: true, params: { opacity: 0.04 } },
     ],
-    transition: { type: 'crossfade', duration: 2.0 },
-    tags: ['chrome', 'metallic', 'organic', 'smooth'],
+    transition: { type: "crossfade", duration: 2.0 },
+    tags: ["chrome", "metallic", "organic", "smooth"],
     builtIn: true,
   },
 
   // 5. Glitch Matrix
   {
-    id: 'glitch-matrix',
-    name: 'Glitch Matrix',
+    id: "glitch-matrix",
+    name: "Glitch Matrix",
     layers: [
       {
-        id: 'matrix-shader',
-        type: 'shader-plane',
-        name: 'Matrix Rain',
+        id: "matrix-shader",
+        type: "shader-plane",
+        name: "Matrix Rain",
         visible: true,
         opacity: 1,
-        blendMode: 'normal',
+        blendMode: "normal",
         vertexShader: PASSTHROUGH_VERTEX,
         fragmentShader: GLITCH_MATRIX_FRAGMENT,
         uniforms: {
-          uColumns: { value: 60, min: 20, max: 120, step: 1, label: 'Columns' },
-          uTrailLength: { value: 3, min: 1, max: 8, step: 0.1, label: 'Trail Length' },
-          uCharDensity: { value: 40, min: 10, max: 80, step: 1, label: 'Char Density' },
+          uColumns: { value: 60, min: 20, max: 120, step: 1, label: "Columns" },
+          uTrailLength: {
+            value: 3,
+            min: 1,
+            max: 8,
+            step: 0.1,
+            label: "Trail Length",
+          },
+          uCharDensity: {
+            value: 40,
+            min: 10,
+            max: 80,
+            step: 1,
+            label: "Char Density",
+          },
         },
       },
-      ppLayer({ bloomIntensity: 1.5, bloomThreshold: 0.4, bloomRadius: 0.7, chromaticOffset: 0.004, vignetteEnabled: false, noiseOpacity: 0.12 }),
+      ppLayer({
+        bloomIntensity: 1.5,
+        bloomThreshold: 0.4,
+        bloomRadius: 0.7,
+        chromaticOffset: 0.004,
+        vignetteEnabled: false,
+        noiseOpacity: 0.12,
+      }),
     ],
     effects: [
-      { name: 'bloom', enabled: true, params: { intensity: 1.5, threshold: 0.4, radius: 0.7 } },
-      { name: 'chromatic', enabled: true, params: { offset: 0.004 } },
-      { name: 'noise', enabled: true, params: { opacity: 0.12 } },
+      {
+        name: "bloom",
+        enabled: true,
+        params: { intensity: 1.5, threshold: 0.4, radius: 0.7 },
+      },
+      { name: "chromatic", enabled: true, params: { offset: 0.004 } },
+      { name: "noise", enabled: true, params: { opacity: 0.12 } },
     ],
-    transition: { type: 'glitch-cut', duration: 1.0 },
-    tags: ['digital', 'glitch', 'matrix', 'retro'],
+    transition: { type: "glitch-cut", duration: 1.0 },
+    tags: ["digital", "glitch", "matrix", "retro"],
     builtIn: true,
   },
 
   // 6. Sacred Geometry
   {
-    id: 'sacred-geometry',
-    name: 'Sacred Geometry',
+    id: "sacred-geometry",
+    name: "Sacred Geometry",
     layers: [
       {
-        id: 'sacred-wireframes',
-        type: 'wireframe-geometry',
-        name: 'Sacred Polyhedra',
+        id: "sacred-wireframes",
+        type: "wireframe-geometry",
+        name: "Sacred Polyhedra",
         visible: true,
         opacity: 1,
-        blendMode: 'normal',
+        blendMode: "normal",
         shapes: [
-          { shape: 'icosahedron', radius: 2.5, detail: 1, color: '#7b5cff', rotationSpeed: [0.15, 0.2, 0.05] },
-          { shape: 'octahedron', radius: 1.8, detail: 0, color: '#ff5cab', rotationSpeed: [-0.1, 0.15, -0.08] },
-          { shape: 'dodecahedron', radius: 1.2, detail: 0, color: '#5cffab', rotationSpeed: [0.08, -0.12, 0.15] },
+          {
+            shape: "icosahedron",
+            radius: 2.5,
+            detail: 1,
+            color: "#7b5cff",
+            rotationSpeed: [0.15, 0.2, 0.05],
+          },
+          {
+            shape: "octahedron",
+            radius: 1.8,
+            detail: 0,
+            color: "#ff5cab",
+            rotationSpeed: [-0.1, 0.15, -0.08],
+          },
+          {
+            shape: "dodecahedron",
+            radius: 1.2,
+            detail: 0,
+            color: "#5cffab",
+            rotationSpeed: [0.08, -0.12, 0.15],
+          },
         ],
         beatScale: 0.4,
         audioReactive: true,
       },
-      ppLayer({ bloomIntensity: 2.0, bloomThreshold: 0.3, bloomRadius: 0.9, vignetteDarkness: 0.6, noiseOpacity: 0.06 }),
+      ppLayer({
+        bloomIntensity: 2.0,
+        bloomThreshold: 0.3,
+        bloomRadius: 0.9,
+        vignetteDarkness: 0.6,
+        noiseOpacity: 0.06,
+      }),
     ],
     effects: [
-      { name: 'bloom', enabled: true, params: { intensity: 2.0, threshold: 0.3, radius: 0.9 } },
-      { name: 'chromatic', enabled: true, params: { offset: 0.002 } },
-      { name: 'vignette', enabled: true, params: { darkness: 0.6, offset: 0.3 } },
-      { name: 'noise', enabled: true, params: { opacity: 0.06 } },
+      {
+        name: "bloom",
+        enabled: true,
+        params: { intensity: 2.0, threshold: 0.3, radius: 0.9 },
+      },
+      { name: "chromatic", enabled: true, params: { offset: 0.002 } },
+      {
+        name: "vignette",
+        enabled: true,
+        params: { darkness: 0.6, offset: 0.3 },
+      },
+      { name: "noise", enabled: true, params: { opacity: 0.06 } },
     ],
-    transition: { type: 'dissolve', duration: 2.5 },
-    tags: ['geometric', 'sacred', 'wireframe', 'minimal'],
+    transition: { type: "dissolve", duration: 2.5 },
+    tags: ["geometric", "sacred", "wireframe", "minimal"],
     builtIn: true,
   },
 
   // 7. Terrain
   {
-    id: 'terrain',
-    name: 'Terrain',
+    id: "terrain",
+    name: "Terrain",
     layers: [
       {
-        id: 'terrain-shader',
-        type: 'shader-plane',
-        name: 'Terrain Flyover',
+        id: "terrain-shader",
+        type: "shader-plane",
+        name: "Terrain Flyover",
         visible: true,
         opacity: 1,
-        blendMode: 'normal',
+        blendMode: "normal",
         vertexShader: PASSTHROUGH_VERTEX,
         fragmentShader: TERRAIN_FRAGMENT,
         uniforms: {
-          uTerrainScale: { value: 0.3, min: 0.1, max: 1, step: 0.01, label: 'Terrain Scale' },
-          uCameraHeight: { value: 3, min: 1, max: 10, step: 0.1, label: 'Camera Height' },
-          uFogDensity: { value: 0.03, min: 0.01, max: 0.1, step: 0.005, label: 'Fog Density' },
-          uFlySpeed: { value: 2, min: 0.5, max: 5, step: 0.1, label: 'Fly Speed' },
+          uTerrainScale: {
+            value: 0.3,
+            min: 0.1,
+            max: 1,
+            step: 0.01,
+            label: "Terrain Scale",
+          },
+          uCameraHeight: {
+            value: 3,
+            min: 1,
+            max: 10,
+            step: 0.1,
+            label: "Camera Height",
+          },
+          uFogDensity: {
+            value: 0.03,
+            min: 0.01,
+            max: 0.1,
+            step: 0.005,
+            label: "Fog Density",
+          },
+          uFlySpeed: {
+            value: 2,
+            min: 0.5,
+            max: 5,
+            step: 0.1,
+            label: "Fly Speed",
+          },
         },
       },
-      ppLayer({ bloomIntensity: 0.8, bloomThreshold: 0.7, bloomRadius: 0.5, chromaticEnabled: false, vignetteDarkness: 0.8, vignetteOffset: 0.2, noiseOpacity: 0.05 }),
+      ppLayer({
+        bloomIntensity: 0.8,
+        bloomThreshold: 0.7,
+        bloomRadius: 0.5,
+        chromaticEnabled: false,
+        vignetteDarkness: 0.8,
+        vignetteOffset: 0.2,
+        noiseOpacity: 0.05,
+      }),
     ],
     effects: [
-      { name: 'bloom', enabled: true, params: { intensity: 0.8, threshold: 0.7, radius: 0.5 } },
-      { name: 'vignette', enabled: true, params: { darkness: 0.8, offset: 0.2 } },
-      { name: 'noise', enabled: true, params: { opacity: 0.05 } },
+      {
+        name: "bloom",
+        enabled: true,
+        params: { intensity: 0.8, threshold: 0.7, radius: 0.5 },
+      },
+      {
+        name: "vignette",
+        enabled: true,
+        params: { darkness: 0.8, offset: 0.2 },
+      },
+      { name: "noise", enabled: true, params: { opacity: 0.05 } },
     ],
-    transition: { type: 'crossfade', duration: 3.0 },
-    tags: ['landscape', 'terrain', 'atmospheric', 'epic'],
+    transition: { type: "crossfade", duration: 3.0 },
+    tags: ["landscape", "terrain", "atmospheric", "epic"],
     builtIn: true,
   },
 
   // 8. Membrane
   {
-    id: 'membrane',
-    name: 'Membrane',
+    id: "membrane",
+    name: "Membrane",
     layers: [
       {
-        id: 'membrane-fbo',
-        type: 'fbo-simulation',
-        name: 'Reaction-Diffusion',
+        id: "membrane-fbo",
+        type: "fbo-simulation",
+        name: "Reaction-Diffusion",
         visible: true,
         opacity: 1,
-        blendMode: 'normal',
+        blendMode: "normal",
         size: 512,
         computeShader: MEMBRANE_COMPUTE,
         displayShader: MEMBRANE_DISPLAY,
         computeUniforms: {
-          uFeedRate: { value: 0.055, min: 0.01, max: 0.1, step: 0.001, label: 'Feed Rate' },
-          uKillRate: { value: 0.062, min: 0.04, max: 0.08, step: 0.001, label: 'Kill Rate' },
+          uFeedRate: {
+            value: 0.055,
+            min: 0.01,
+            max: 0.1,
+            step: 0.001,
+            label: "Feed Rate",
+          },
+          uKillRate: {
+            value: 0.062,
+            min: 0.04,
+            max: 0.08,
+            step: 0.001,
+            label: "Kill Rate",
+          },
           uDiffuseA: { value: 1.0 },
           uDiffuseB: { value: 0.5 },
           uInjectStrength: { value: 0.5 },
@@ -619,38 +876,53 @@ export const factoryPresets: ScenePreset[] = [
         displayUniforms: {},
         stepsPerFrame: 4,
         audioInject: true,
-        seedPattern: 'random-spots',
+        seedPattern: "random-spots",
       },
-      ppLayer({ bloomIntensity: 1.0, bloomThreshold: 0.6, bloomRadius: 0.7, chromaticEnabled: false, vignetteDarkness: 0.5, noiseEnabled: false }),
+      ppLayer({
+        bloomIntensity: 1.0,
+        bloomThreshold: 0.6,
+        bloomRadius: 0.7,
+        chromaticEnabled: false,
+        vignetteDarkness: 0.5,
+        noiseEnabled: false,
+      }),
     ],
     effects: [
-      { name: 'bloom', enabled: true, params: { intensity: 1.0, threshold: 0.6, radius: 0.7 } },
-      { name: 'vignette', enabled: true, params: { darkness: 0.5, offset: 0.3 } },
+      {
+        name: "bloom",
+        enabled: true,
+        params: { intensity: 1.0, threshold: 0.6, radius: 0.7 },
+      },
+      {
+        name: "vignette",
+        enabled: true,
+        params: { darkness: 0.5, offset: 0.3 },
+      },
     ],
-    transition: { type: 'dissolve', duration: 3.0 },
-    tags: ['biological', 'emergent', 'organic', 'atmospheric'],
+    transition: { type: "dissolve", duration: 3.0 },
+    tags: ["biological", "emergent", "organic", "atmospheric"],
     builtIn: true,
   },
 
   // 9. Disintegration (Hydra)
   {
-    id: 'disintegration',
-    name: 'Disintegration',
+    id: "disintegration",
+    name: "Disintegration",
     layers: [
       {
-        id: 'disintegration-hydra',
-        type: 'hydra',
-        name: 'Disintegration',
+        id: "disintegration-hydra",
+        type: "hydra",
+        name: "Disintegration",
         visible: true,
         opacity: 1,
-        blendMode: 'normal',
+        blendMode: "normal",
         // licensed with CC BY-NC-SA 4.0 https://creativecommons.org/licenses/by-nc-sa/4.0/
         // by Ritchse — instagram.com/ritchse
         code: `osc(5,.1).modulate(noise(6),.22).diff(o0)
   .modulateScrollY(osc(2).modulate(osc().rotate(),.11))
   .scale(.72).color(0.99,1.014,1)
   .out()`,
-        projection: 'plane',
+        projection: "plane",
         resolution: [1280, 720],
         position: [0, 0, 0],
         rotation: [0, 0, 0],
@@ -658,16 +930,33 @@ export const factoryPresets: ScenePreset[] = [
         scale: 1,
         audioReactive: false,
       },
-      ppLayer({ bloomIntensity: 0.8, bloomThreshold: 0.5, bloomRadius: 0.6, chromaticEnabled: true, chromaticOffset: 0.002, vignetteDarkness: 0.6, vignetteOffset: 0.3, noiseOpacity: 0.05 }),
+      ppLayer({
+        bloomIntensity: 0.8,
+        bloomThreshold: 0.5,
+        bloomRadius: 0.6,
+        chromaticEnabled: true,
+        chromaticOffset: 0.002,
+        vignetteDarkness: 0.6,
+        vignetteOffset: 0.3,
+        noiseOpacity: 0.05,
+      }),
     ],
     effects: [
-      { name: 'bloom', enabled: true, params: { intensity: 0.8, threshold: 0.5, radius: 0.6 } },
-      { name: 'chromatic', enabled: true, params: { offset: 0.002 } },
-      { name: 'vignette', enabled: true, params: { darkness: 0.6, offset: 0.3 } },
-      { name: 'noise', enabled: true, params: { opacity: 0.05 } },
+      {
+        name: "bloom",
+        enabled: true,
+        params: { intensity: 0.8, threshold: 0.5, radius: 0.6 },
+      },
+      { name: "chromatic", enabled: true, params: { offset: 0.002 } },
+      {
+        name: "vignette",
+        enabled: true,
+        params: { darkness: 0.6, offset: 0.3 },
+      },
+      { name: "noise", enabled: true, params: { opacity: 0.05 } },
     ],
-    transition: { type: 'dissolve', duration: 2.5 },
-    tags: ['hydra', 'feedback', 'glitch', 'organic'],
+    transition: { type: "dissolve", duration: 2.5 },
+    tags: ["hydra", "feedback", "glitch", "organic"],
     builtIn: true,
   },
-]
+];
