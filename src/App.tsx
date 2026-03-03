@@ -7,6 +7,7 @@ import { useAudioInit } from './hooks/useAudio'
 import { usePresetStore } from './engine/store'
 import { SceneBar } from './ui/SceneBar'
 import { SceneEditor } from './ui/SceneEditor'
+import { SceneManager } from './ui/SceneManager'
 import { AudioMonitor } from './ui/AudioMonitor'
 import { factoryPresets } from './presets/factory'
 import './ui/ui.css'
@@ -17,12 +18,14 @@ function AudioInitializer() {
 }
 
 export default function App() {
-  // Always overwrite factory presets on mount so that shader code updates,
-  // new layers, or config changes are picked up immediately — even when
-  // localStorage contains a stale copy of the preset.
-  // User-created presets (IDs not in the factory list) are never touched.
+  // Seed factory presets only on first-ever run (empty store).
+  // After that, users own their project — factory scenes can be renamed,
+  // deleted, or replaced via Save/Load without being overwritten on reload.
   useEffect(() => {
-    usePresetStore.getState().registerPresets(factoryPresets)
+    const stored = usePresetStore.getState().presets
+    if (Object.keys(stored).length === 0) {
+      usePresetStore.getState().registerPresets(factoryPresets)
+    }
   }, [])
 
   return (
@@ -45,6 +48,7 @@ export default function App() {
 
       {/* DOM overlay — custom UI */}
       <SceneBar />
+      <SceneManager />
       <SceneEditor />
       <AudioMonitor />
       <KeyboardController />

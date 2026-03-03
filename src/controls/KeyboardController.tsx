@@ -49,6 +49,11 @@ export function KeyboardController() {
                 globalStore.toggleEditor()
                 break
 
+            case 'p':
+                // Toggle scene manager
+                globalStore.toggleSceneManager()
+                break
+
             case 'a':
                 // Toggle audio monitor
                 globalStore.toggleAudioMonitor()

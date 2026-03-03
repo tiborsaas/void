@@ -33,7 +33,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 6px 8px;
+  padding: 5px 8px;
   background: var(--void-bg);
   border-top: 1px solid var(--void-border);
   backdrop-filter: blur(12px);
@@ -45,6 +45,58 @@
   display: none;
 }
 
+/* ── New compact chip ──────────────────────────── */
+.scene-bar__chip {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+  border-radius: var(--void-radius);
+  background: transparent;
+  color: var(--void-text-dim);
+  font-family: var(--void-font);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--void-transition);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.scene-bar__chip:hover {
+  background: var(--void-surface-hover);
+  color: var(--void-text);
+  border-color: var(--void-border);
+}
+
+.scene-bar__chip--active {
+  background: var(--void-accent-dim);
+  color: var(--void-text);
+  border-color: var(--void-accent);
+}
+
+.scene-bar__chip--transitioning {
+  animation: scene-pulse 0.5s ease infinite alternate;
+}
+
+.scene-bar__chip-key {
+  font-size: 8px;
+  color: var(--void-text-muted);
+  flex-shrink: 0;
+}
+
+.scene-bar__chip-name {
+  font-size: 9px;
+  font-weight: 500;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Keep legacy item classes for compatibility */
 .scene-bar__item {
   flex: 0 0 auto;
   display: flex;
@@ -1743,4 +1795,472 @@
   font-size: 9px;
   color: var(--void-text-muted);
   letter-spacing: 0.04em;
+}
+
+/* ─── Scene Manager (floating panel) ─────────────────────────────── */
+
+.scene-manager-panel {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 310;
+  display: flex;
+  flex-direction: column;
+  width: 520px;
+  max-width: calc(100vw - 32px);
+  height: min(600px, calc(100vh - 80px));
+  background: var(--void-surface);
+  border: 1px solid var(--void-border);
+  border-radius: var(--void-radius);
+  backdrop-filter: blur(16px);
+  overflow: hidden;
+  font-family: var(--void-font);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.6);
+}
+
+.scene-manager-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--void-border);
+  flex-shrink: 0;
+  cursor: grab;
+  user-select: none;
+}
+
+.scene-manager-panel__header:active {
+  cursor: grabbing;
+}
+
+.scene-manager-panel__drag-hint {
+  font-size: 12px;
+  color: var(--void-text-muted);
+  flex-shrink: 0;
+}
+
+.scene-manager-panel__title {
+  flex: 1;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--void-text-dim);
+}
+
+.scene-manager-panel__close {
+  background: none;
+  border: none;
+  color: var(--void-text-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color var(--void-transition);
+  flex-shrink: 0;
+}
+
+.scene-manager-panel__close:hover {
+  color: var(--void-text);
+}
+
+.scene-manager-panel__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Project row ── */
+.scene-manager__project-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--void-border);
+  flex-shrink: 0;
+}
+
+.scene-manager__project-label {
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--void-text-muted);
+  flex-shrink: 0;
+}
+
+.scene-manager__project-name {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--void-border);
+  border-radius: var(--void-radius-sm);
+  color: var(--void-text);
+  font-family: var(--void-font);
+  font-size: 11px;
+  padding: 4px 8px;
+  outline: none;
+  transition: border-color var(--void-transition);
+}
+
+.scene-manager__project-name:focus {
+  border-color: var(--void-accent);
+}
+
+.scene-manager__transition-btn {
+  background: none;
+  border: 1px solid var(--void-border);
+  border-radius: var(--void-radius-sm);
+  color: var(--void-text-dim);
+  font-family: var(--void-font);
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--void-transition);
+  flex-shrink: 0;
+}
+
+.scene-manager__transition-btn:hover {
+  border-color: var(--void-border-active);
+  color: var(--void-text);
+}
+
+/* ── Scene list ── */
+.scene-manager__list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--void-border) transparent;
+}
+
+.scene-manager__empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--void-text-muted);
+  font-size: 11px;
+}
+
+.scene-manager__card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--void-radius);
+  margin-bottom: 3px;
+  background: transparent;
+  transition: all var(--void-transition);
+}
+
+.scene-manager__card:hover {
+  background: var(--void-surface-hover);
+  border-color: var(--void-border);
+}
+
+.scene-manager__card--active {
+  background: var(--void-accent-dim);
+  border-color: var(--void-accent);
+}
+
+.scene-manager__card-num {
+  font-size: 9px;
+  color: var(--void-text-muted);
+  min-width: 16px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.scene-manager__card-name {
+  flex: 1;
+  font-size: 11px;
+  color: var(--void-text);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.scene-manager__card-name:hover {
+  color: #fff;
+}
+
+.scene-manager__card-builtin {
+  margin-left: 6px;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--void-text-muted);
+  border: 1px solid var(--void-border);
+  border-radius: 3px;
+  padding: 1px 4px;
+  vertical-align: middle;
+}
+
+.scene-manager__card-tags {
+  font-size: 8px;
+  color: var(--void-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  flex-shrink: 0;
+}
+
+.scene-manager__rename-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--void-accent);
+  border-radius: var(--void-radius-sm);
+  color: var(--void-text);
+  font-family: var(--void-font);
+  font-size: 11px;
+  padding: 3px 7px;
+  outline: none;
+}
+
+/* ── Card action buttons ── */
+.scene-manager__card-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.scene-manager__icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid transparent;
+  border-radius: var(--void-radius-sm);
+  background: none;
+  color: var(--void-text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all var(--void-transition);
+}
+
+.scene-manager__icon-btn:hover {
+  background: var(--void-surface-hover);
+  border-color: var(--void-border);
+  color: var(--void-text);
+}
+
+.scene-manager__icon-btn--dim {
+  opacity: 0.4;
+}
+
+.scene-manager__icon-btn--danger {
+  color: var(--void-danger);
+  border-color: var(--void-danger);
+}
+
+.scene-manager__icon-btn--danger:hover {
+  background: rgba(255, 71, 87, 0.15);
+  color: var(--void-danger);
+}
+
+.scene-manager__icon-btn--delete:hover {
+  color: var(--void-danger);
+  border-color: var(--void-danger);
+  background: rgba(255, 71, 87, 0.1);
+}
+
+/* ── Footer ── */
+.scene-manager__footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--void-border);
+  flex-shrink: 0;
+}
+
+.scene-manager__footer-spacer {
+  flex: 1;
+}
+
+.scene-manager__status {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  padding: 3px 8px;
+  border-radius: var(--void-radius-sm);
+}
+
+.scene-manager__status--ok {
+  color: var(--void-success);
+  background: rgba(46, 213, 115, 0.1);
+  border: 1px solid rgba(46, 213, 115, 0.25);
+}
+
+.scene-manager__status--err {
+  color: var(--void-danger);
+  background: rgba(255, 71, 87, 0.1);
+  border: 1px solid rgba(255, 71, 87, 0.25);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scene-manager__footer-btn {
+  background: transparent;
+  border: 1px solid var(--void-border);
+  border-radius: var(--void-radius-sm);
+  color: var(--void-text-dim);
+  font-family: var(--void-font);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all var(--void-transition);
+  white-space: nowrap;
+}
+
+.scene-manager__footer-btn:hover {
+  background: var(--void-surface-hover);
+  border-color: var(--void-border-active);
+  color: var(--void-text);
+}
+
+.scene-manager__footer-btn--accent {
+  border-color: var(--void-accent);
+  color: var(--void-accent);
+}
+
+.scene-manager__footer-btn--accent:hover {
+  background: var(--void-accent-dim);
+  color: var(--void-text);
+}
+
+/* Dirty state: subtle pulse on the Save button */
+.scene-manager__footer-btn--dirty {
+  animation: save-pulse 2s ease-in-out infinite;
+}
+
+@keyframes save-pulse {
+  0%,
+  100% {
+    border-color: var(--void-accent);
+    box-shadow: none;
+  }
+  50% {
+    border-color: var(--void-accent);
+    box-shadow: 0 0 6px var(--void-accent);
+  }
+}
+
+/* Warn button (New Project) */
+.scene-manager__footer-btn--warn {
+  border-color: var(--void-warning);
+  color: var(--void-warning);
+}
+
+.scene-manager__footer-btn--warn:hover {
+  background: rgba(255, 165, 2, 0.12);
+  color: var(--void-warning);
+}
+
+/* Danger button (Discard) */
+.scene-manager__footer-btn--danger {
+  border-color: var(--void-danger);
+  color: var(--void-danger);
+}
+
+.scene-manager__footer-btn--danger:hover {
+  background: rgba(255, 71, 87, 0.15);
+  color: var(--void-danger);
+}
+
+/* ── Dirty indicator in header title ── */
+.scene-manager-panel__dirty {
+  color: var(--void-warning);
+  font-size: 10px;
+  margin-left: 2px;
+}
+
+/* ── File location row ── */
+.scene-manager__file-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 6px;
+  border-bottom: 1px solid var(--void-border);
+  flex-shrink: 0;
+  min-height: 24px;
+}
+
+.scene-manager__file-icon {
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.scene-manager__file-name {
+  flex: 1;
+  font-family: var(--void-font);
+  font-size: 10px;
+  color: var(--void-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scene-manager__file-dirty {
+  font-family: var(--void-font);
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  color: var(--void-warning);
+  border: 1px solid rgba(255, 165, 2, 0.3);
+  border-radius: 3px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+}
+
+.scene-manager__file-unsaved {
+  font-family: var(--void-font);
+  font-size: 9px;
+  color: var(--void-text-muted);
+  letter-spacing: 0.04em;
+}
+
+/* ── Confirm overlay ── */
+.scene-manager__confirm-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  border-radius: var(--void-radius);
+}
+
+.scene-manager__confirm-box {
+  background: var(--void-surface);
+  border: 1px solid var(--void-border-active);
+  border-radius: var(--void-radius);
+  padding: 20px 24px;
+  max-width: 320px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.scene-manager__confirm-msg {
+  font-family: var(--void-font);
+  font-size: 11px;
+  color: var(--void-text);
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+
+.scene-manager__confirm-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
 }

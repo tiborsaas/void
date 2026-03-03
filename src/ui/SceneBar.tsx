@@ -5,8 +5,9 @@ import '../ui/ui.css'
 const TRANSITION_TYPES: TransitionType[] = ['crossfade', 'dissolve', 'glitch-cut', 'zoom-blur', 'instant']
 
 /**
- * SceneBar — bottom bar showing all presets as selectable cards.
- * Number keys shown as shortcuts.
+ * SceneBar — slim persistent bottom strip.
+ * Shows numbered scene shortcuts for quick switching + toolbar buttons.
+ * Full scene management is in the floating SceneManager panel (◉).
  */
 export function SceneBar() {
     const presets = usePresetStore((s) => s.presets)
@@ -17,8 +18,10 @@ export function SceneBar() {
     const transitionType = usePresetStore((s) => s.transitionType)
     const editorOpen = useGlobalStore((s) => s.editorOpen)
     const audioMonitorOpen = useGlobalStore((s) => s.audioMonitorOpen)
+    const sceneManagerOpen = useGlobalStore((s) => s.sceneManagerOpen)
     const toggleEditor = useGlobalStore((s) => s.toggleEditor)
     const toggleAudioMonitor = useGlobalStore((s) => s.toggleAudioMonitor)
+    const toggleSceneManager = useGlobalStore((s) => s.toggleSceneManager)
 
     const presetList = Object.values(presets)
 
@@ -30,31 +33,40 @@ export function SceneBar() {
 
     return (
         <div className="scene-bar">
+            {/* Scene shortcut chips */}
             {presetList.map((preset, index) => {
                 const isActive = preset.id === activePresetId
                 const isNext = preset.id === nextPresetId
-                let className = 'scene-bar__item'
-                if (isActive) className += ' scene-bar__item--active'
-                if (isNext && isTransitioning) className += ' scene-bar__item--transitioning'
+                let cls = 'scene-bar__chip'
+                if (isActive) cls += ' scene-bar__chip--active'
+                if (isNext && isTransitioning) cls += ' scene-bar__chip--transitioning'
 
                 return (
                     <button
                         key={preset.id}
-                        className={className}
+                        className={cls}
+                        title={preset.name}
                         onClick={() => {
                             if (!isActive) startTransition(preset.id)
                         }}
                     >
-                        <span className="scene-bar__key">{index + 1}</span>
-                        <span className="scene-bar__name">{preset.name}</span>
-                        {preset.tags.length > 0 && (
-                            <span className="scene-bar__tags">{preset.tags.slice(0, 3).join(' · ')}</span>
-                        )}
+                        <span className="scene-bar__chip-key">{index + 1}</span>
+                        <span className="scene-bar__chip-name">
+                            {preset.name.length > 12 ? preset.name.slice(0, 11) + '…' : preset.name}
+                        </span>
                     </button>
                 )
             })}
 
+            {/* Right-side toolbar */}
             <div className="scene-bar__controls">
+                <button
+                    className={`scene-bar__btn ${sceneManagerOpen ? 'scene-bar__btn--active' : ''}`}
+                    onClick={toggleSceneManager}
+                    title="Scene Manager (P)"
+                >
+                    ◉
+                </button>
                 <button
                     className={`scene-bar__btn ${editorOpen ? 'scene-bar__btn--active' : ''}`}
                     onClick={toggleEditor}
