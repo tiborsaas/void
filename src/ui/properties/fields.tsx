@@ -1,7 +1,72 @@
 // ─── Shared Property Field Primitives ────────────────────────────────────────
 // Used by all type-specific blocks inside PropertiesPanel.
 
-import type { ShaderUniformDef } from '../../types/layers'
+import type { ShaderUniformDef, ModulationFieldType } from '../../types/layers'
+import { usePresetStore } from '../../engine/store'
+
+// ─── Modulation metadata prop ────────────────────────────────────────────────
+
+export interface ModulatableInfo {
+    layerId: string
+    propertyPath: string
+    propertyLabel: string
+    fieldType: ModulationFieldType
+    /** For select cycling: available option values */
+    selectValues?: string[]
+}
+
+function ModulateButton({ info }: { info?: ModulatableInfo }) {
+    if (!info) return null
+
+    const activePreset = usePresetStore((s) => s.presets[s.activePresetId])
+    const addModulation = usePresetStore((s) => s.addModulation)
+    const mods = activePreset?.modulations ?? []
+    const isModulated = mods.some(
+        (m) => m.layerId === info.layerId && m.propertyPath === info.propertyPath && m.enabled,
+    )
+    const hasAnyMod = mods.some(
+        (m) => m.layerId === info.layerId && m.propertyPath === info.propertyPath,
+    )
+
+    const handleAdd = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        addModulation({
+            id: `mod-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            layerId: info.layerId,
+            propertyPath: info.propertyPath,
+            propertyLabel: info.propertyLabel,
+            fieldType: info.fieldType,
+            sourceType: 'lfo',
+            shape: 'sine',
+            frequency: 1,
+            phase: 0,
+            audioBand: 'amplitude',
+            amplitude: 0.5,
+            offset: 0,
+            enabled: true,
+            selectValues: info.selectValues,
+        })
+    }
+
+    if (hasAnyMod) {
+        return (
+            <span
+                className={`param-modulate-dot ${isModulated ? 'param-modulate-dot--active' : ''}`}
+                title="Modulated"
+            />
+        )
+    }
+
+    return (
+        <button
+            className="param-modulate-btn"
+            onClick={handleAdd}
+            title={`Modulate ${info.propertyLabel}`}
+        >
+            +
+        </button>
+    )
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -12,6 +77,7 @@ interface SliderProps {
     max: number
     step?: number
     onChange: (v: number) => void
+    modulatable?: ModulatableInfo
 }
 
 interface Vec2Props {
@@ -22,6 +88,7 @@ interface Vec2Props {
     step?: number
     labels?: [string, string]
     onChange: (v: [number, number]) => void
+    modulatable?: { layerId: string; basePath: string; baseLabel: string }
 }
 
 interface Vec3Props {
@@ -32,18 +99,21 @@ interface Vec3Props {
     step?: number
     labels?: [string, string, string]
     onChange: (v: [number, number, number]) => void
+    modulatable?: { layerId: string; basePath: string; baseLabel: string }
 }
 
 interface ColorProps {
     label: string
     value: string
     onChange: (v: string) => void
+    modulatable?: ModulatableInfo
 }
 
 interface ToggleProps {
     label: string
     value: boolean
     onChange: (v: boolean) => void
+    modulatable?: ModulatableInfo
 }
 
 interface SelectProps<T extends string> {
@@ -51,6 +121,7 @@ interface SelectProps<T extends string> {
     value: T
     options: { value: T; label: string }[]
     onChange: (v: T) => void
+    modulatable?: ModulatableInfo
 }
 
 interface NumberInputProps {
@@ -66,6 +137,8 @@ interface UniformsEditorProps {
     label?: string
     uniforms: Record<string, ShaderUniformDef>
     onChange: (key: string, value: number) => void
+    /** Layer ID + uniform path prefix for modulation support */
+    modulatable?: { layerId: string; uniformsPath: string }
 }
 
 // ─── SectionTitle ────────────────────────────────────────────────────────────
@@ -76,7 +149,7 @@ export function SectionTitle({ children }: { children: React.ReactNode }) {
 
 // ─── SliderField ─────────────────────────────────────────────────────────────
 
-export function SliderField({ label, value, min, max, step = 0.01, onChange }: SliderProps) {
+export function SliderField({ label, value, min, max, step = 0.01, onChange, modulatable }: SliderProps) {
     const decimals = step < 0.1 ? 3 : step < 1 ? 2 : 1
     return (
         <div className="param-row">
@@ -91,13 +164,14 @@ export function SliderField({ label, value, min, max, step = 0.01, onChange }: S
                 onChange={(e) => onChange(parseFloat(e.target.value))}
             />
             <span className="param-value">{value.toFixed(decimals)}</span>
+            <ModulateButton info={modulatable} />
         </div>
     )
 }
 
 // ─── Vec2Field ───────────────────────────────────────────────────────────────
 
-export function Vec2Field({ label, value, min = -10, max = 10, step = 0.01, labels = ['X', 'Y'], onChange }: Vec2Props) {
+export function Vec2Field({ label, value, min = -10, max = 10, step = 0.01, labels = ['X', 'Y'], onChange, modulatable }: Vec2Props) {
     return (
         <div className="param-group">
             <div className="param-group-label">{label}</div>
@@ -118,6 +192,14 @@ export function Vec2Field({ label, value, min = -10, max = 10, step = 0.01, labe
                         }}
                     />
                     <span className="param-value">{value[i].toFixed(2)}</span>
+                    {modulatable && (
+                        <ModulateButton info={{
+                            layerId: modulatable.layerId,
+                            propertyPath: `${modulatable.basePath}.${i}`,
+                            propertyLabel: `${modulatable.baseLabel} ${labels[i]}`,
+                            fieldType: 'vec-component',
+                        }} />
+                    )}
                 </div>
             ))}
         </div>
@@ -126,7 +208,7 @@ export function Vec2Field({ label, value, min = -10, max = 10, step = 0.01, labe
 
 // ─── Vec3Field ───────────────────────────────────────────────────────────────
 
-export function Vec3Field({ label, value, min = -10, max = 10, step = 0.01, labels = ['X', 'Y', 'Z'], onChange }: Vec3Props) {
+export function Vec3Field({ label, value, min = -10, max = 10, step = 0.01, labels = ['X', 'Y', 'Z'], onChange, modulatable }: Vec3Props) {
     return (
         <div className="param-group">
             <div className="param-group-label">{label}</div>
@@ -147,6 +229,14 @@ export function Vec3Field({ label, value, min = -10, max = 10, step = 0.01, labe
                         }}
                     />
                     <span className="param-value">{value[i].toFixed(2)}</span>
+                    {modulatable && (
+                        <ModulateButton info={{
+                            layerId: modulatable.layerId,
+                            propertyPath: `${modulatable.basePath}.${i}`,
+                            propertyLabel: `${modulatable.baseLabel} ${labels[i]}`,
+                            fieldType: 'vec-component',
+                        }} />
+                    )}
                 </div>
             ))}
         </div>
@@ -155,7 +245,7 @@ export function Vec3Field({ label, value, min = -10, max = 10, step = 0.01, labe
 
 // ─── ColorField ──────────────────────────────────────────────────────────────
 
-export function ColorField({ label, value, onChange }: ColorProps) {
+export function ColorField({ label, value, onChange, modulatable }: ColorProps) {
     return (
         <div className="param-row">
             <span className="param-label">{label}</span>
@@ -168,13 +258,14 @@ export function ColorField({ label, value, onChange }: ColorProps) {
                 />
                 <span className="param-value">{value}</span>
             </div>
+            <ModulateButton info={modulatable} />
         </div>
     )
 }
 
 // ─── ToggleField ─────────────────────────────────────────────────────────────
 
-export function ToggleField({ label, value, onChange }: ToggleProps) {
+export function ToggleField({ label, value, onChange, modulatable }: ToggleProps) {
     return (
         <div className="param-row">
             <span className="param-label">{label}</span>
@@ -183,13 +274,14 @@ export function ToggleField({ label, value, onChange }: ToggleProps) {
                 onClick={() => onChange(!value)}
                 aria-label={label}
             />
+            <ModulateButton info={modulatable} />
         </div>
     )
 }
 
 // ─── SelectField ─────────────────────────────────────────────────────────────
 
-export function SelectField<T extends string>({ label, value, options, onChange }: SelectProps<T>) {
+export function SelectField<T extends string>({ label, value, options, onChange, modulatable }: SelectProps<T>) {
     return (
         <div className="param-row">
             <span className="param-label">{label}</span>
@@ -202,6 +294,7 @@ export function SelectField<T extends string>({ label, value, options, onChange 
                     <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
             </select>
+            <ModulateButton info={modulatable} />
         </div>
     )
 }
@@ -262,7 +355,7 @@ export function TextInputField({ label, value, onChange, placeholder }: { label:
 // Auto-generates sliders from a Record<string, ShaderUniformDef>.
 // Only renders numeric uniforms (number type with min/max).
 
-export function UniformsEditor({ label, uniforms, onChange }: UniformsEditorProps) {
+export function UniformsEditor({ label, uniforms, onChange, modulatable }: UniformsEditorProps) {
     const entries = Object.entries(uniforms).filter(
         ([, def]) => typeof def.value === 'number' && def.min !== undefined && def.max !== undefined,
     )
@@ -281,6 +374,12 @@ export function UniformsEditor({ label, uniforms, onChange }: UniformsEditorProp
                     max={def.max!}
                     step={def.step ?? 0.01}
                     onChange={(v) => onChange(key, v)}
+                    modulatable={modulatable ? {
+                        layerId: modulatable.layerId,
+                        propertyPath: `${modulatable.uniformsPath}.${key}.value`,
+                        propertyLabel: def.label ?? key,
+                        fieldType: 'number',
+                    } : undefined}
                 />
             ))}
         </div>
