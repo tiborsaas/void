@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGlobalStore, audioRefs } from '../engine/store'
-import { getModulatedValue, getModulatedColor } from '../engine/ModulationEngine'
+import { getModulatedValue } from '../engine/ModulationEngine'
 import { getThreeBlending } from '../utils/blendUtils'
 import type { Text2DLayer } from '../types/layers'
 

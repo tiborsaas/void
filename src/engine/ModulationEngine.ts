@@ -3,7 +3,7 @@
 // Outputs are stored in mutable refs (same pattern as audioRefs/clockRefs)
 // so layers can read modulated offsets without triggering React re-renders.
 
-import { audioRefs, clockRefs } from "./store";
+import { audioRefs } from "./store";
 import type {
   AudioSourceBand,
   LFOShape,

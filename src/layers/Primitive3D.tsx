@@ -2,7 +2,7 @@ import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGlobalStore, audioRefs } from '../engine/store'
-import { getModulatedValue, getModulatedColor, modulationRefs } from '../engine/ModulationEngine'
+import { getModulatedValue, getModulatedColor } from '../engine/ModulationEngine'
 import { getBlendJSXProps } from '../utils/blendUtils'
 import type { Primitive3DLayer, PrimitiveShape } from '../types/layers'
 
