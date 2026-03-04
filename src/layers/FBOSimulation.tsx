@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGlobalStore, audioRefs } from '../engine/store'
 import { getBlendJSXProps } from '../utils/blendUtils'
+import { getModulatedValue } from '../engine/ModulationEngine'
 import type { FBOSimulationLayer, FBOSeedPattern } from '../types/layers'
 
 interface Props {
@@ -298,8 +299,20 @@ export function FBOSimulation({ config }: Props) {
       }
     }
 
+    // Modulate user compute uniforms
+    if (config.computeUniforms) {
+      for (const [key, def] of Object.entries(config.computeUniforms)) {
+        if (computeUniforms[key]) {
+          computeUniforms[key].value = getModulatedValue(
+            config.id, `computeUniforms.${key}.value`, def.value as number,
+            (def.min ?? -100), (def.max ?? 100)
+          )
+        }
+      }
+    }
+
     // Ping-pong compute passes
-    const steps = config.stepsPerFrame
+    const steps = Math.max(1, Math.round(getModulatedValue(config.id, 'stepsPerFrame', config.stepsPerFrame, 1, 20)))
     for (let i = 0; i < steps; i++) {
       const readIdx = (frameIndex.current + i) % 2
       const writeIdx = 1 - readIdx
@@ -324,11 +337,24 @@ export function FBOSimulation({ config }: Props) {
 
     gl.setRenderTarget(null)
 
+    // Modulate user display uniforms
+    if (config.displayUniforms) {
+      for (const [key, def] of Object.entries(config.displayUniforms)) {
+        if (displayUniforms[key]) {
+          displayUniforms[key].value = getModulatedValue(
+            config.id, `displayUniforms.${key}.value`, def.value as number,
+            (def.min ?? -100), (def.max ?? 100)
+          )
+        }
+      }
+    }
+
     // Display uniforms
+    const modOpacity = getModulatedValue(config.id, 'opacity', config.opacity, 0, 1)
     const displayIdx = frameIndex.current
     displayUniforms.uState.value = renderTargets[displayIdx].texture
     displayUniforms.uHue.value = hue
-    displayUniforms.uIntensity.value = intensity * config.opacity
+    displayUniforms.uIntensity.value = intensity * modOpacity
     displayUniforms.uBeat.value = beatAccum.current
 
     void computeMesh // keep alive

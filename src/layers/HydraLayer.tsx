@@ -2,6 +2,7 @@ import { useRef, useEffect, useMemo, useCallback } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGlobalStore, audioRefs } from '../engine/store'
+import { getModulatedValue } from '../engine/ModulationEngine'
 import { getBlendJSXProps } from '../utils/blendUtils'
 import type { HydraLayer as HydraLayerConfig, HydraProjection } from '../types/layers'
 
@@ -181,6 +182,7 @@ export function HydraLayer({ config }: Props) {
     useFrame((_, delta) => {
         const speed = useGlobalStore.getState().masterSpeed
         const intensity = useGlobalStore.getState().masterIntensity
+        const id = config.id
 
         // Tick Hydra with wall-clock delta (in ms) adjusted by masterSpeed
         if (hydraRef.current) {
@@ -198,26 +200,36 @@ export function HydraLayer({ config }: Props) {
         if (audioRefs.beat) beatAccum.current = 1.0
         beatAccum.current *= 0.9
 
-        // Rotation — accumulate every frame
-        mesh.rotation.x += config.rotationSpeed[0] * speed * 0.01
-        mesh.rotation.y += config.rotationSpeed[1] * speed * 0.01
-        mesh.rotation.z += config.rotationSpeed[2] * speed * 0.01
+        // Modulated rotation
+        const modRotX = getModulatedValue(id, 'rotationSpeed.0', config.rotationSpeed[0], -2, 2)
+        const modRotY = getModulatedValue(id, 'rotationSpeed.1', config.rotationSpeed[1], -2, 2)
+        const modRotZ = getModulatedValue(id, 'rotationSpeed.2', config.rotationSpeed[2], -2, 2)
+
+        mesh.rotation.x += modRotX * speed * 0.01
+        mesh.rotation.y += modRotY * speed * 0.01
+        mesh.rotation.z += modRotZ * speed * 0.01
 
         if (config.projection === 'plane') {
             const [sw, sh] = getBaseScale()
             mesh.scale.set(sw, sh, 1)
         } else {
+            const modScale = getModulatedValue(id, 'scale', config.scale, 0.1, 10)
             const s = config.audioReactive
-                ? config.scale * (1 + beatAccum.current * 0.2 + audioRefs.amplitude * 0.1) * intensity
-                : config.scale
+                ? modScale * (1 + beatAccum.current * 0.2 + audioRefs.amplitude * 0.1) * intensity
+                : modScale
             mesh.scale.setScalar(s)
         }
 
-        mesh.position.set(...config.position)
+        // Modulated position
+        const modPosX = getModulatedValue(id, 'position.0', config.position[0], -20, 20)
+        const modPosY = getModulatedValue(id, 'position.1', config.position[1], -20, 20)
+        const modPosZ = getModulatedValue(id, 'position.2', config.position[2], -20, 20)
+        mesh.position.set(modPosX, modPosY, modPosZ)
 
         // Opacity driven by intensity
+        const modOpacity = getModulatedValue(id, 'opacity', config.opacity, 0, 1)
         const mat = mesh.material as THREE.MeshBasicMaterial
-        if (mat) mat.opacity = config.opacity * intensity
+        if (mat) mat.opacity = modOpacity * intensity
     })
 
     // MeshBasicMaterial: no lighting needed — texture is self-lit

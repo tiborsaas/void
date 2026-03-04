@@ -3,6 +3,7 @@ import { useFrame, useLoader } from '@react-three/fiber'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { useGlobalStore, audioRefs } from '../engine/store'
+import { getModulatedValue } from '../engine/ModulationEngine'
 import { applyBlendToMaterial } from '../utils/blendUtils'
 import type { Model3DLayer } from '../types/layers'
 import { modelStorage } from '../engine/ModelStorage'
@@ -56,32 +57,46 @@ function Model3DInner({ config, url }: Props & { url: string }) {
 
     const speed = useGlobalStore.getState().masterSpeed
     const intensity = useGlobalStore.getState().masterIntensity
+    const id = config.id
 
     if (audioRefs.beat) beatAccum.current = 1.0
     beatAccum.current *= 0.9
 
+    // Modulated rotation speed
+    const modRotX = getModulatedValue(id, 'rotationSpeed.0', config.rotationSpeed[0], -3, 3)
+    const modRotY = getModulatedValue(id, 'rotationSpeed.1', config.rotationSpeed[1], -3, 3)
+    const modRotZ = getModulatedValue(id, 'rotationSpeed.2', config.rotationSpeed[2], -3, 3)
+
     // Auto-rotation
     if (config.autoRotate) {
-      groupRef.current.rotation.x += config.rotationSpeed[0] * speed * 0.01
-      groupRef.current.rotation.y += config.rotationSpeed[1] * speed * 0.01
-      groupRef.current.rotation.z += config.rotationSpeed[2] * speed * 0.01
+      groupRef.current.rotation.x += modRotX * speed * 0.01
+      groupRef.current.rotation.y += modRotY * speed * 0.01
+      groupRef.current.rotation.z += modRotZ * speed * 0.01
     }
 
+    // Position modulation
+    const modPosX = getModulatedValue(id, 'position.0', config.position[0], -10, 10)
+    const modPosY = getModulatedValue(id, 'position.1', config.position[1], -10, 10)
+    const modPosZ = getModulatedValue(id, 'position.2', config.position[2], -10, 10)
+    groupRef.current.position.set(modPosX, modPosY, modPosZ)
+
     // Audio-reactive scale
+    const modScale = getModulatedValue(id, 'scale', config.scale, 0.01, 20)
     if (config.audioReactive) {
-      const s = config.scale * (1 + beatAccum.current * 0.2 + audioRefs.amplitude * 0.1)
+      const s = modScale * (1 + beatAccum.current * 0.2 + audioRefs.amplitude * 0.1)
       groupRef.current.scale.setScalar(s)
     } else {
-      groupRef.current.scale.setScalar(config.scale)
+      groupRef.current.scale.setScalar(modScale)
     }
 
     // Apply opacity/intensity to all meshes each frame
+    const modOpacity = getModulatedValue(id, 'opacity', config.opacity, 0, 1)
     clonedScene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         const materials = Array.isArray(child.material) ? child.material : [child.material]
         materials.forEach(mat => {
           if (mat && mat.opacity !== undefined) {
-            mat.opacity = config.opacity * intensity
+            mat.opacity = modOpacity * intensity
           }
         })
       }

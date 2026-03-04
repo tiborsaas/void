@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { Text3D as DreiText3D, Center } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGlobalStore, audioRefs } from '../engine/store'
+import { getModulatedValue, getModulatedColor } from '../engine/ModulationEngine'
 import { getBlendJSXProps } from '../utils/blendUtils'
 import type { Text3DLayer } from '../types/layers'
 
@@ -24,14 +25,25 @@ export function Text3D({ config }: Props) {
     const speed = useGlobalStore.getState().masterSpeed
     const hue = useGlobalStore.getState().masterHue
     const intensity = useGlobalStore.getState().masterIntensity
+    const id = config.id
 
     if (audioRefs.beat) beatAccum.current = 1.0
     beatAccum.current *= 0.9
 
-    // Auto-rotation
-    groupRef.current.rotation.x += config.rotationSpeed[0] * speed * 0.01
-    groupRef.current.rotation.y += config.rotationSpeed[1] * speed * 0.01
-    groupRef.current.rotation.z += config.rotationSpeed[2] * speed * 0.01
+    // Modulated rotation speed
+    const modRotX = getModulatedValue(id, 'rotationSpeed.0', config.rotationSpeed[0], -3, 3)
+    const modRotY = getModulatedValue(id, 'rotationSpeed.1', config.rotationSpeed[1], -3, 3)
+    const modRotZ = getModulatedValue(id, 'rotationSpeed.2', config.rotationSpeed[2], -3, 3)
+
+    groupRef.current.rotation.x += modRotX * speed * 0.01
+    groupRef.current.rotation.y += modRotY * speed * 0.01
+    groupRef.current.rotation.z += modRotZ * speed * 0.01
+
+    // Position modulation
+    const modPosX = getModulatedValue(id, 'position.0', config.position[0], -10, 10)
+    const modPosY = getModulatedValue(id, 'position.1', config.position[1], -10, 10)
+    const modPosZ = getModulatedValue(id, 'position.2', config.position[2], -10, 10)
+    groupRef.current.position.set(modPosX, modPosY, modPosZ)
 
     // Audio-reactive scale
     if (config.audioReactive) {
@@ -39,12 +51,18 @@ export function Text3D({ config }: Props) {
       groupRef.current.scale.setScalar(s)
     }
 
+    // Modulated values
+    const modColor = getModulatedColor(id, 'color', config.color)
+    const modEmissive = getModulatedColor(id, 'emissive', config.emissive)
+    const modEmissiveInt = getModulatedValue(id, 'emissiveIntensity', config.emissiveIntensity, 0, 5)
+    const modOpacity = getModulatedValue(id, 'opacity', config.opacity, 0, 1)
+
     // Update material colors
     groupRef.current.traverse((child) => {
       if (child instanceof THREE.Mesh && child.material) {
         const mat = child.material as THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial
 
-        const baseColor = new THREE.Color(config.color)
+        const baseColor = new THREE.Color(modColor)
         baseColor.offsetHSL(hue, 0, 0)
 
         if ('color' in mat) {
@@ -52,23 +70,22 @@ export function Text3D({ config }: Props) {
         }
 
         if (config.materialType === 'emissive' && 'emissive' in mat) {
-          const emissiveColor = new THREE.Color(config.emissive)
+          const emissiveColor = new THREE.Color(modEmissive)
           emissiveColor.offsetHSL(hue, 0, 0)
           mat.emissive = emissiveColor
-          mat.emissiveIntensity = config.emissiveIntensity * intensity * config.opacity
+          mat.emissiveIntensity = modEmissiveInt * intensity * modOpacity
         } else if ('emissive' in mat && config.materialType === undefined) {
-          // backwards compatibility for prior presets
-          const emissiveColor = new THREE.Color(config.emissive)
+          const emissiveColor = new THREE.Color(modEmissive)
           emissiveColor.offsetHSL(hue, 0, 0)
           mat.emissive = emissiveColor
-          mat.emissiveIntensity = config.emissiveIntensity * intensity * config.opacity
+          mat.emissiveIntensity = modEmissiveInt * intensity * modOpacity
         }
 
-        mat.opacity = config.opacity
+        mat.opacity = modOpacity
       }
     })
 
-    void state // used above
+    void state
   })
 
   // fallback to emissive-like logic for undefined materialType due to old presets

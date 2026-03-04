@@ -8,6 +8,7 @@ import {
 } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
 import { audioRefs } from '../engine/store'
+import { getModulatedValue } from '../engine/ModulationEngine'
 import type { PostProcessingLayer } from '../types/layers'
 import * as THREE from 'three'
 
@@ -24,16 +25,19 @@ export function PostProcessingEffects({ config }: Props) {
     const bloomIntensityRef = useRef(config.bloomIntensity)
 
     useFrame(() => {
+        const id = config.id
         if (config.chromaticEnabled) {
+            const modChroma = getModulatedValue(id, 'chromaticOffset', config.chromaticOffset, 0, 0.05)
             const base = config.audioReactive
-                ? config.chromaticOffset + audioRefs.amplitude * 0.005 + (audioRefs.beat ? 0.01 : 0)
-                : config.chromaticOffset
+                ? modChroma + audioRefs.amplitude * 0.005 + (audioRefs.beat ? 0.01 : 0)
+                : modChroma
             chromaticOffset.current.set(base, base)
         }
         if (config.bloomEnabled) {
+            const modBloom = getModulatedValue(id, 'bloomIntensity', config.bloomIntensity, 0, 5)
             bloomIntensityRef.current = config.audioReactive
-                ? config.bloomIntensity + audioRefs.amplitude * 0.5
-                : config.bloomIntensity
+                ? modBloom + audioRefs.amplitude * 0.5
+                : modBloom
         }
     })
 

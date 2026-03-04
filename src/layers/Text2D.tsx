@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGlobalStore, audioRefs } from '../engine/store'
+import { getModulatedValue, getModulatedColor } from '../engine/ModulationEngine'
 import { getThreeBlending } from '../utils/blendUtils'
 import type { Text2DLayer } from '../types/layers'
 
@@ -22,31 +23,44 @@ export function Text2D({ config }: Props) {
     if (!textRef.current) return
 
     const intensity = useGlobalStore.getState().masterIntensity
+    const id = config.id
 
     if (audioRefs.beat) beatAccum.current = 1.0
     beatAccum.current *= 0.9
 
+    const modPosX = getModulatedValue(id, 'position.0', config.position[0], -10, 10)
+    const modPosY = getModulatedValue(id, 'position.1', config.position[1], -10, 10)
+    const modRot = getModulatedValue(id, 'rotation', config.rotation, -Math.PI, Math.PI)
+    const modOpacity = getModulatedValue(id, 'opacity', config.opacity, 0, 1)
+    const modFontSize = getModulatedValue(id, 'fontSize', config.fontSize, 0.1, 5)
+    const baseFontScale = modFontSize / config.fontSize
+
+    textRef.current.position.x = modPosX
+    textRef.current.position.y = modPosY
+    textRef.current.rotation.z = modRot
+    textRef.current.scale.setScalar(baseFontScale)
+
     if (config.audioReactive) {
       switch (config.audioProperty) {
         case 'scale': {
-          const s = 1 + audioRefs.amplitude * 0.5 + beatAccum.current * 0.3
-          textRef.current.scale.setScalar(s)
+          const audioScale = 1 + audioRefs.amplitude * 0.5 + beatAccum.current * 0.3
+          textRef.current.scale.setScalar(baseFontScale * audioScale)
           break
         }
         case 'opacity': {
           const mat = textRef.current.material as THREE.MeshBasicMaterial
           if (mat && 'opacity' in mat) {
-            mat.opacity = config.opacity * (0.3 + audioRefs.amplitude * 0.7)
+            mat.opacity = modOpacity * (0.3 + audioRefs.amplitude * 0.7)
           }
           break
         }
         case 'position': {
-          textRef.current.position.x = config.position[0] + Math.sin(audioRefs.amplitude * Math.PI) * 0.2
-          textRef.current.position.y = config.position[1] + beatAccum.current * 0.1
+          textRef.current.position.x = modPosX + Math.sin(audioRefs.amplitude * Math.PI) * 0.2
+          textRef.current.position.y = modPosY + beatAccum.current * 0.1
           break
         }
         case 'rotation': {
-          textRef.current.rotation.z = config.rotation + audioRefs.amplitude * 0.5
+          textRef.current.rotation.z = modRot + audioRefs.amplitude * 0.5
           break
         }
       }
@@ -54,11 +68,11 @@ export function Text2D({ config }: Props) {
 
     // Always apply intensity and ensure correct blend mode
     const mat = textRef.current.material as THREE.MeshBasicMaterial
+
     if (mat) {
       if (config.audioProperty !== 'opacity') {
-        mat.opacity = config.opacity * intensity
+        mat.opacity = modOpacity * intensity
       }
-      // Lazily sync blend mode (cheap comparison, no shader recompile needed)
       const targetBlending = getThreeBlending(config.blendMode)
       if (mat.blending !== targetBlending) {
         mat.blending = targetBlending

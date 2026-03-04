@@ -2,6 +2,7 @@ import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGlobalStore, audioRefs } from '../engine/store'
+import { getModulatedValue, getModulatedColor } from '../engine/ModulationEngine'
 import { getBlendJSXProps } from '../utils/blendUtils'
 import type { InstancedParticlesLayer } from '../types/layers'
 
@@ -56,7 +57,13 @@ export function InstancedParticles({ config }: Props) {
     const intensity = useGlobalStore.getState().masterIntensity
     const dt = Math.min(delta, 0.05) * speed
     const count = config.count
+    const id = config.id
     const audioBoost = config.audioReactive ? audioRefs.amplitude : 0
+
+    const modDamping = getModulatedValue(id, 'damping', config.damping, 0, 1)
+    const modMaxSpeed = getModulatedValue(id, 'maxSpeed', config.maxSpeed, 0.01, 5)
+    const modOpacity = getModulatedValue(id, 'opacity', config.opacity, 0, 1)
+    const modColor = getModulatedColor(id, 'color', config.color)
 
     // Simulate
     for (let i = 0; i < count; i++) {
@@ -64,13 +71,19 @@ export function InstancedParticles({ config }: Props) {
       const iy = ix + 1
       const iz = ix + 2
 
-      // Gravitational attractors
-      for (const attractor of config.attractors) {
-        const dx = attractor.position[0] - state.positions[ix]
-        const dy = attractor.position[1] - state.positions[iy]
-        const dz = attractor.position[2] - state.positions[iz]
+      // Gravitational attractors (with modulated strength/position)
+      for (let ai = 0; ai < config.attractors.length; ai++) {
+        const attractor = config.attractors[ai]
+        const modAx = getModulatedValue(id, `attractors.${ai}.position.0`, attractor.position[0], -10, 10)
+        const modAy = getModulatedValue(id, `attractors.${ai}.position.1`, attractor.position[1], -10, 10)
+        const modAz = getModulatedValue(id, `attractors.${ai}.position.2`, attractor.position[2], -10, 10)
+        const modStr = getModulatedValue(id, `attractors.${ai}.strength`, attractor.strength, -5, 5)
+
+        const dx = modAx - state.positions[ix]
+        const dy = modAy - state.positions[iy]
+        const dz = modAz - state.positions[iz]
         const distSq = dx * dx + dy * dy + dz * dz + 0.1
-        const force = (attractor.strength * (1 + audioBoost * 2)) / distSq
+        const force = (modStr * (1 + audioBoost * 2)) / distSq
 
         state.velocities[ix] += dx * force * dt
         state.velocities[iy] += dy * force * dt
@@ -78,14 +91,14 @@ export function InstancedParticles({ config }: Props) {
       }
 
       // Damping
-      state.velocities[ix] *= 1 - config.damping * dt
-      state.velocities[iy] *= 1 - config.damping * dt
-      state.velocities[iz] *= 1 - config.damping * dt
+      state.velocities[ix] *= 1 - modDamping * dt
+      state.velocities[iy] *= 1 - modDamping * dt
+      state.velocities[iz] *= 1 - modDamping * dt
 
       // Clamp speed
       const speed2 = state.velocities[ix] ** 2 + state.velocities[iy] ** 2 + state.velocities[iz] ** 2
-      if (speed2 > config.maxSpeed * config.maxSpeed) {
-        const s = config.maxSpeed / Math.sqrt(speed2)
+      if (speed2 > modMaxSpeed * modMaxSpeed) {
+        const s = modMaxSpeed / Math.sqrt(speed2)
         state.velocities[ix] *= s
         state.velocities[iy] *= s
         state.velocities[iz] *= s
@@ -105,7 +118,7 @@ export function InstancedParticles({ config }: Props) {
       meshRef.current.setMatrixAt(i, _dummy.matrix)
 
       // Coloring
-      const v = Math.sqrt(speed2) / config.maxSpeed
+      const v = Math.sqrt(speed2) / modMaxSpeed
       switch (config.colorMode) {
         case 'velocity':
           _color.setHSL((hue + v * 0.3) % 1, 0.8, 0.3 + v * 0.5)
@@ -117,10 +130,10 @@ export function InstancedParticles({ config }: Props) {
           _color.setHSL((hue + state.ages[i] * 0.5) % 1, 0.9, 0.4 + state.ages[i] * 0.4)
           break
         default:
-          _color.set(config.color)
+          _color.set(modColor)
           break
       }
-      _color.multiplyScalar(intensity * config.opacity)
+      _color.multiplyScalar(intensity * modOpacity)
       meshRef.current.setColorAt(i, _color)
     }
 

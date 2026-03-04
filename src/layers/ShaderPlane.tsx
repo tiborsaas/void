@@ -2,6 +2,7 @@ import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGlobalStore, audioRefs } from '../engine/store'
+import { getModulatedValue } from '../engine/ModulationEngine'
 import { getBlendJSXProps } from '../utils/blendUtils'
 import type { ShaderPlaneLayer } from '../types/layers'
 
@@ -55,17 +56,23 @@ export function ShaderPlane({ config }: Props) {
     uniforms.uTreble.value = audioRefs.bands[4]
     uniforms.uAmplitude.value = audioRefs.amplitude
     uniforms.uHue.value = hue
-    uniforms.uIntensity.value = intensity * config.opacity
+    uniforms.uIntensity.value = intensity * getModulatedValue(config.id, 'opacity', config.opacity, 0, 1)
     uniforms.uSpeed.value = speed
 
     if (audioRefs.beat) beatAccum.current = 1.0
     beatAccum.current *= 0.92
     uniforms.uBeat.value = beatAccum.current
 
-    // Sync user-defined uniforms from config
+    // Sync user-defined uniforms from config (with modulation)
     if (config.uniforms) {
       for (const [key, def] of Object.entries(config.uniforms)) {
-        if (uniforms[key]) uniforms[key].value = def.value
+        if (uniforms[key]) {
+          const modPath = `uniforms.${key}.value`
+          const base = typeof def.value === 'number' ? def.value : 0
+          uniforms[key].value = typeof def.value === 'number'
+            ? getModulatedValue(config.id, modPath, base, def.min ?? -100, def.max ?? 100)
+            : def.value
+        }
       }
     }
 

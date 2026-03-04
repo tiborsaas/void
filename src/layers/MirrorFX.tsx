@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { MirrorFX } from '../effects/MirrorFX'
 import { MirrorEffectImpl } from '../effects/MirrorEffect'
 import { audioRefs } from '../engine/store'
+import { getModulatedValue } from '../engine/ModulationEngine'
 import type { MirrorFXLayer } from '../types/layers'
 
 interface Props {
@@ -14,18 +15,18 @@ export function MirrorFXEffects({ config }: Props) {
 
     useFrame(() => {
         if (!mirrorRef.current) return
+        const id = config.id
 
-        let dynamicAngle = config.angle
+        let dynamicAngle = getModulatedValue(id, 'angle', config.angle, 0, Math.PI * 2)
+        const modSides = Math.round(getModulatedValue(id, 'sides', config.sides, 2, 24))
 
         if (config.audioReactive) {
-            // Spin and bounce to the beat if kaleidoscope mode
             if (config.mode === 4) {
                 dynamicAngle += audioRefs.amplitude * 0.5
-                // optionally we could make sides dynamic too but maybe too glitchy
             }
         }
 
-        mirrorRef.current.updateUniforms(config.mode, config.sides, dynamicAngle)
+        mirrorRef.current.updateUniforms(config.mode, modSides, dynamicAngle)
     })
 
     if (config.mode === 0) return null

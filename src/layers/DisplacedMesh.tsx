@@ -2,6 +2,7 @@ import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGlobalStore, audioRefs } from '../engine/store'
+import { getModulatedValue } from '../engine/ModulationEngine'
 import { getBlendJSXProps } from '../utils/blendUtils'
 import type { DisplacedMeshLayer, MeshGeometryType } from '../types/layers'
 
@@ -60,6 +61,7 @@ export function DisplacedMesh({ config }: Props) {
     const speed = useGlobalStore.getState().masterSpeed
     const hue = useGlobalStore.getState().masterHue
     const intensity = useGlobalStore.getState().masterIntensity
+    const id = config.id
 
     uniforms.uTime.value = state.clock.elapsedTime * speed
     uniforms.uBass.value = audioRefs.bands[0]
@@ -67,27 +69,37 @@ export function DisplacedMesh({ config }: Props) {
     uniforms.uTreble.value = audioRefs.bands[4]
     uniforms.uAmplitude.value = audioRefs.amplitude
     uniforms.uHue.value = hue
-    uniforms.uIntensity.value = intensity * config.opacity
+    uniforms.uIntensity.value = intensity * getModulatedValue(id, 'opacity', config.opacity, 0, 1)
 
     if (audioRefs.beat) beatAccum.current = 1.0
     beatAccum.current *= 0.92
     uniforms.uBeat.value = beatAccum.current
 
-    // Sync user-defined uniforms from config
+    // Sync user-defined uniforms from config (with modulation)
     if (config.uniforms) {
       for (const [key, def] of Object.entries(config.uniforms)) {
-        if (uniforms[key]) uniforms[key].value = def.value
+        if (uniforms[key]) {
+          const modPath = `uniforms.${key}.value`
+          const base = typeof def.value === 'number' ? def.value : 0
+          uniforms[key].value = typeof def.value === 'number'
+            ? getModulatedValue(id, modPath, base, def.min ?? -100, def.max ?? 100)
+            : def.value
+        }
       }
     }
 
     if (meshRef.current) {
-      // Auto-rotation — uses frame delta to avoid getDelta() triple-call bug
-      meshRef.current.rotation.x += config.rotationSpeed[0] * speed * delta
-      meshRef.current.rotation.y += config.rotationSpeed[1] * speed * delta
-      meshRef.current.rotation.z += config.rotationSpeed[2] * speed * delta
+      // Modulated rotation speed
+      const modRotX = getModulatedValue(id, 'rotationSpeed.0', config.rotationSpeed[0], -3, 3)
+      const modRotY = getModulatedValue(id, 'rotationSpeed.1', config.rotationSpeed[1], -3, 3)
+      const modRotZ = getModulatedValue(id, 'rotationSpeed.2', config.rotationSpeed[2], -3, 3)
+
+      meshRef.current.rotation.x += modRotX * speed * delta
+      meshRef.current.rotation.y += modRotY * speed * delta
+      meshRef.current.rotation.z += modRotZ * speed * delta
 
       // Audio-reactive scale pulsing
-      const baseScale = config.scale ?? 1
+      const baseScale = getModulatedValue(id, 'scale', config.scale ?? 1, 0.01, 20)
       if (config.audioReactive) {
         const s = baseScale * (1 + beatAccum.current * 0.25 + audioRefs.amplitude * 0.15)
         meshRef.current.scale.setScalar(s)

@@ -2,6 +2,7 @@ import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGlobalStore, audioRefs } from '../engine/store'
+import { getModulatedValue, getModulatedColor } from '../engine/ModulationEngine'
 import { getBlendJSXProps } from '../utils/blendUtils'
 import type { WireframeGeometryLayer, WireframeShape } from '../types/layers'
 
@@ -49,20 +50,27 @@ export function WireframeGeometry({ config }: Props) {
     const hue = useGlobalStore.getState().masterHue
     const intensity = useGlobalStore.getState().masterIntensity
     const t = state.clock.elapsedTime * speed
+    const id = config.id
 
     if (audioRefs.beat) beatAccum.current = 1.0
     beatAccum.current *= 0.9
 
-    const beatScale = 1 + beatAccum.current * config.beatScale
+    const modBeatScale = getModulatedValue(id, 'beatScale', config.beatScale, 0, 2)
+    const beatScale = 1 + beatAccum.current * modBeatScale
+    const modOpacity = getModulatedValue(id, 'opacity', config.opacity, 0, 1)
 
     shapeRefs.current.forEach((mesh, i) => {
       if (!mesh) return
       const shapeDef = config.shapes[i]
       if (!shapeDef) return
 
-      mesh.rotation.x += shapeDef.rotationSpeed[0] * speed * 0.01
-      mesh.rotation.y += shapeDef.rotationSpeed[1] * speed * 0.01
-      mesh.rotation.z += shapeDef.rotationSpeed[2] * speed * 0.01
+      const modRotX = getModulatedValue(id, `shapes.${i}.rotationSpeed.0`, shapeDef.rotationSpeed[0], -5, 5)
+      const modRotY = getModulatedValue(id, `shapes.${i}.rotationSpeed.1`, shapeDef.rotationSpeed[1], -5, 5)
+      const modRotZ = getModulatedValue(id, `shapes.${i}.rotationSpeed.2`, shapeDef.rotationSpeed[2], -5, 5)
+
+      mesh.rotation.x += modRotX * speed * 0.01
+      mesh.rotation.y += modRotY * speed * 0.01
+      mesh.rotation.z += modRotZ * speed * 0.01
 
       if (config.audioReactive) {
         mesh.scale.setScalar(beatScale)
@@ -70,13 +78,14 @@ export function WireframeGeometry({ config }: Props) {
 
       // Update color with hue shift
       const mat = mesh.material as THREE.LineBasicMaterial
-      const baseColor = new THREE.Color(shapeDef.color)
+      const modColor = getModulatedColor(id, `shapes.${i}.color`, shapeDef.color)
+      const baseColor = new THREE.Color(modColor)
       baseColor.offsetHSL(hue, 0, 0)
       mat.color.copy(baseColor)
-      mat.opacity = intensity * config.opacity
+      mat.opacity = intensity * modOpacity
     })
 
-    void t // used in rotation via speed
+    void t
   })
 
   return (
