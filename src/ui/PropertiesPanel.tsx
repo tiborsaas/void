@@ -53,7 +53,8 @@ function ShaderPlanePanel({ layer, update }: PanelProps<'shader-plane'>) {
     return (
         <>
             <SectionTitle>Parameters</SectionTitle>
-            <UniformsEditor uniforms={config.uniforms} onChange={patchUniform} />
+            <UniformsEditor uniforms={config.uniforms} onChange={patchUniform}
+                modulatable={{ layerId: layer.id, uniformsPath: 'uniforms' }} />
             {Object.keys(config.uniforms).length === 0 && (
                 <div className="prop-hint">No configurable parameters for this shader.</div>
             )}
@@ -69,6 +70,9 @@ function DisplacedMeshPanel({ layer, update }: PanelProps<'displaced-mesh'>) {
         update({ uniforms: { ...config.uniforms, [key]: { ...config.uniforms[key], value } } })
     }
 
+    const m = (prop: string, label: string, ft: 'number' | 'color-hue' | 'toggle' | 'select' = 'number') =>
+        ({ layerId: layer.id, propertyPath: prop, propertyLabel: label, fieldType: ft as import('../types/layers').ModulationFieldType })
+
     return (
         <>
             <SectionTitle>Geometry</SectionTitle>
@@ -78,6 +82,7 @@ function DisplacedMeshPanel({ layer, update }: PanelProps<'displaced-mesh'>) {
                 options={(['sphere', 'icosahedron', 'torus', 'torusKnot', 'box', 'plane', 'cylinder'] as MeshGeometryType[])
                     .map((v) => ({ value: v, label: v }))}
                 onChange={(v) => update({ geometry: v })}
+                modulatable={{ ...m('geometry', 'Geometry', 'select'), selectValues: ['sphere', 'icosahedron', 'torus', 'torusKnot', 'box', 'plane', 'cylinder'] }}
             />
             {geoInfo.labels.map((lbl, i) => (
                 <SliderField
@@ -92,17 +97,21 @@ function DisplacedMeshPanel({ layer, update }: PanelProps<'displaced-mesh'>) {
                         next[i] = v
                         update({ geometryArgs: next })
                     }}
+                    modulatable={m(`geometryArgs.${i}`, lbl)}
                 />
             ))}
-            <ToggleField label="Wireframe" value={config.wireframe} onChange={(v) => update({ wireframe: v })} />
+            <ToggleField label="Wireframe" value={config.wireframe} onChange={(v) => update({ wireframe: v })}
+                modulatable={m('wireframe', 'Wireframe', 'toggle')} />
 
             <SectionTitle>Transform</SectionTitle>
             <SliderField label="Scale" value={config.scale ?? 1} min={0.01} max={10} step={0.01}
-                onChange={(v) => update({ scale: v })} />
+                onChange={(v) => update({ scale: v })} modulatable={m('scale', 'Scale')} />
             <Vec3Field label="Rotation Speed" value={config.rotationSpeed} min={-5} max={5} step={0.01}
-                onChange={(v) => update({ rotationSpeed: v })} />
+                onChange={(v) => update({ rotationSpeed: v })}
+                modulatable={{ layerId: layer.id, basePath: 'rotationSpeed', baseLabel: 'Rot Speed' }} />
             <Vec3Field label="Init Rotation" value={config.rotation} min={-Math.PI} max={Math.PI} step={0.01}
-                onChange={(v) => update({ rotation: v })} />
+                onChange={(v) => update({ rotation: v })}
+                modulatable={{ layerId: layer.id, basePath: 'rotation', baseLabel: 'Rotation' }} />
 
             <SectionTitle>Audio</SectionTitle>
             <ToggleField label="Audio Reactive" value={config.audioReactive ?? false} onChange={(v) => update({ audioReactive: v })} />
@@ -110,7 +119,8 @@ function DisplacedMeshPanel({ layer, update }: PanelProps<'displaced-mesh'>) {
             {Object.keys(config.uniforms).length > 0 && (
                 <>
                     <SectionTitle>Uniforms</SectionTitle>
-                    <UniformsEditor uniforms={config.uniforms} onChange={patchUniform} />
+                    <UniformsEditor uniforms={config.uniforms} onChange={patchUniform}
+                        modulatable={{ layerId: layer.id, uniformsPath: 'uniforms' }} />
                 </>
             )}
         </>
@@ -119,6 +129,8 @@ function DisplacedMeshPanel({ layer, update }: PanelProps<'displaced-mesh'>) {
 
 function InstancedParticlesPanel({ layer, update }: PanelProps<'instanced-particles'>) {
     const config = layer as Extract<LayerConfig, { type: 'instanced-particles' }>
+    const m = (prop: string, label: string, ft: 'number' | 'color-hue' | 'toggle' | 'select' = 'number') =>
+        ({ layerId: layer.id, propertyPath: prop, propertyLabel: label, fieldType: ft as import('../types/layers').ModulationFieldType })
 
     return (
         <>
@@ -126,25 +138,28 @@ function InstancedParticlesPanel({ layer, update }: PanelProps<'instanced-partic
             <NumberField label="Count" value={config.count} min={100} max={200000} step={1000}
                 onChange={(v) => update({ count: Math.max(100, Math.floor(v)) })} />
             <SliderField label="Size" value={config.size} min={0.001} max={0.2} step={0.001}
-                onChange={(v) => update({ size: v })} />
+                onChange={(v) => update({ size: v })} modulatable={m('size', 'Size')} />
             <SliderField label="Damping" value={config.damping} min={0} max={0.2} step={0.001}
-                onChange={(v) => update({ damping: v })} />
+                onChange={(v) => update({ damping: v })} modulatable={m('damping', 'Damping')} />
             <SliderField label="Max Speed" value={config.maxSpeed} min={0.05} max={5} step={0.01}
-                onChange={(v) => update({ maxSpeed: v })} />
+                onChange={(v) => update({ maxSpeed: v })} modulatable={m('maxSpeed', 'Max Speed')} />
             <ToggleField label="Audio Reactive" value={config.audioReactive} onChange={(v) => update({ audioReactive: v })} />
 
             <SectionTitle>Appearance</SectionTitle>
             <SelectField label="Geometry" value={config.geometry}
                 options={[{ value: 'sphere', label: 'Sphere' }, { value: 'box', label: 'Box' }]}
-                onChange={(v) => update({ geometry: v })} />
+                onChange={(v) => update({ geometry: v })}
+                modulatable={{ ...m('geometry', 'Geometry', 'select'), selectValues: ['sphere', 'box'] }} />
             <SelectField label="Color Mode" value={config.colorMode}
                 options={[
                     { value: 'velocity', label: 'Velocity' }, { value: 'position', label: 'Position' },
                     { value: 'age', label: 'Age' }, { value: 'solid', label: 'Solid' },
                 ]}
-                onChange={(v) => update({ colorMode: v })} />
+                onChange={(v) => update({ colorMode: v })}
+                modulatable={{ ...m('colorMode', 'Color Mode', 'select'), selectValues: ['velocity', 'position', 'age', 'solid'] }} />
             {config.colorMode === 'solid' && (
-                <ColorField label="Color" value={config.color} onChange={(v) => update({ color: v })} />
+                <ColorField label="Color" value={config.color} onChange={(v) => update({ color: v })}
+                    modulatable={m('color', 'Color', 'color-hue')} />
             )}
 
             <SectionTitle>Attractors</SectionTitle>
@@ -153,7 +168,10 @@ function InstancedParticlesPanel({ layer, update }: PanelProps<'instanced-partic
                     <div className="attractor-block__header">
                         <span className="attractor-block__title">Attractor {i + 1}</span>
                         <button className="attractor-block__remove"
-                            onClick={() => update({ attractors: config.attractors.filter((_, j) => j !== i) })}>
+                            onClick={() => {
+                                usePresetStore.getState().removeSubItemModulations(layer.id, 'attractors', i, config.attractors.length - 1)
+                                update({ attractors: config.attractors.filter((_, j) => j !== i) })
+                            }}>
                             ✕
                         </button>
                     </div>
@@ -162,19 +180,22 @@ function InstancedParticlesPanel({ layer, update }: PanelProps<'instanced-partic
                             const next = [...config.attractors]
                             next[i] = { ...att, position: v }
                             update({ attractors: next })
-                        }} />
+                        }}
+                        modulatable={{ layerId: layer.id, basePath: `attractors.${i}.position`, baseLabel: `Attr ${i + 1} Pos` }} />
                     <SliderField label="Strength" value={att.strength} min={0} max={3} step={0.01}
                         onChange={(v) => {
                             const next = [...config.attractors]
                             next[i] = { ...att, strength: v }
                             update({ attractors: next })
-                        }} />
+                        }}
+                        modulatable={m(`attractors.${i}.strength`, `Attr ${i + 1} Strength`)} />
                     <SliderField label="Radius" value={att.radius} min={0.1} max={10} step={0.1}
                         onChange={(v) => {
                             const next = [...config.attractors]
                             next[i] = { ...att, radius: v }
                             update({ attractors: next })
-                        }} />
+                        }}
+                        modulatable={m(`attractors.${i}.radius`, `Attr ${i + 1} Radius`)} />
                 </div>
             ))}
             <button className="add-layer-btn" style={{ marginTop: 4 }}
@@ -187,12 +208,14 @@ function InstancedParticlesPanel({ layer, update }: PanelProps<'instanced-partic
 
 function WireframeGeometryPanel({ layer, update }: PanelProps<'wireframe-geometry'>) {
     const config = layer as Extract<LayerConfig, { type: 'wireframe-geometry' }>
+    const m = (prop: string, label: string, ft: 'number' | 'color-hue' | 'toggle' | 'select' = 'number') =>
+        ({ layerId: layer.id, propertyPath: prop, propertyLabel: label, fieldType: ft as import('../types/layers').ModulationFieldType })
 
     return (
         <>
             <SectionTitle>Global</SectionTitle>
             <SliderField label="Beat Scale" value={config.beatScale} min={0} max={2} step={0.01}
-                onChange={(v) => update({ beatScale: v })} />
+                onChange={(v) => update({ beatScale: v })} modulatable={m('beatScale', 'Beat Scale')} />
             <ToggleField label="Audio Reactive" value={config.audioReactive} onChange={(v) => update({ audioReactive: v })} />
 
             <SectionTitle>Shapes</SectionTitle>
@@ -201,22 +224,29 @@ function WireframeGeometryPanel({ layer, update }: PanelProps<'wireframe-geometr
                     <div className="attractor-block__header">
                         <span className="attractor-block__title">Shape {i + 1}</span>
                         <button className="attractor-block__remove"
-                            onClick={() => update({ shapes: config.shapes.filter((_, j) => j !== i) })}>✕</button>
+                            onClick={() => {
+                                usePresetStore.getState().removeSubItemModulations(layer.id, 'shapes', i, config.shapes.length - 1)
+                                update({ shapes: config.shapes.filter((_, j) => j !== i) })
+                            }}>✕</button>
                     </div>
                     <SelectField label="Type" value={s.shape}
                         options={(['icosahedron', 'octahedron', 'dodecahedron', 'tetrahedron', 'cube'] as WireframeShape[])
                             .map((v) => ({ value: v, label: v }))}
                         onChange={(v) => {
                             const next = [...config.shapes]; next[i] = { ...s, shape: v }; update({ shapes: next })
-                        }} />
+                        }}
+                        modulatable={{ ...m(`shapes.${i}.shape`, `Shape ${i + 1} Type`, 'select'), selectValues: ['icosahedron', 'octahedron', 'dodecahedron', 'tetrahedron', 'cube'] }} />
                     <SliderField label="Radius" value={s.radius} min={0.1} max={10} step={0.1}
-                        onChange={(v) => { const next = [...config.shapes]; next[i] = { ...s, radius: v }; update({ shapes: next }) }} />
+                        onChange={(v) => { const next = [...config.shapes]; next[i] = { ...s, radius: v }; update({ shapes: next }) }}
+                        modulatable={m(`shapes.${i}.radius`, `Shape ${i + 1} Radius`)} />
                     <SliderField label="Detail" value={s.detail} min={0} max={4} step={1}
                         onChange={(v) => { const next = [...config.shapes]; next[i] = { ...s, detail: v }; update({ shapes: next }) }} />
                     <ColorField label="Color" value={s.color}
-                        onChange={(v) => { const next = [...config.shapes]; next[i] = { ...s, color: v }; update({ shapes: next }) }} />
+                        onChange={(v) => { const next = [...config.shapes]; next[i] = { ...s, color: v }; update({ shapes: next }) }}
+                        modulatable={m(`shapes.${i}.color`, `Shape ${i + 1} Color`, 'color-hue')} />
                     <Vec3Field label="Rotation Speed" value={s.rotationSpeed} min={-3} max={3} step={0.01}
-                        onChange={(v) => { const next = [...config.shapes]; next[i] = { ...s, rotationSpeed: v }; update({ shapes: next }) }} />
+                        onChange={(v) => { const next = [...config.shapes]; next[i] = { ...s, rotationSpeed: v }; update({ shapes: next }) }}
+                        modulatable={{ layerId: layer.id, basePath: `shapes.${i}.rotationSpeed`, baseLabel: `Shape ${i + 1} Rot` }} />
                 </div>
             ))}
             <button className="add-layer-btn" style={{ marginTop: 4 }}
@@ -229,6 +259,8 @@ function WireframeGeometryPanel({ layer, update }: PanelProps<'wireframe-geometr
 
 function FBOSimulationPanel({ layer, update }: PanelProps<'fbo-simulation'>) {
     const config = layer as Extract<LayerConfig, { type: 'fbo-simulation' }>
+    const m = (prop: string, label: string, ft: 'number' | 'color-hue' | 'toggle' | 'select' = 'number') =>
+        ({ layerId: layer.id, propertyPath: prop, propertyLabel: label, fieldType: ft as import('../types/layers').ModulationFieldType })
 
     const patchComputeUniform = (key: string, value: number) =>
         update({ computeUniforms: { ...config.computeUniforms, [key]: { ...config.computeUniforms[key], value } } })
@@ -244,7 +276,7 @@ function FBOSimulationPanel({ layer, update }: PanelProps<'fbo-simulation'>) {
                 options={[{ value: '128', label: '128²' }, { value: '256', label: '256²' }, { value: '512', label: '512²' }, { value: '1024', label: '1024²' }]}
                 onChange={(v) => update({ size: parseInt(v) })} />
             <SliderField label="Steps/Frame" value={config.stepsPerFrame} min={1} max={16} step={1}
-                onChange={(v) => update({ stepsPerFrame: v })} />
+                onChange={(v) => update({ stepsPerFrame: v })} modulatable={m('stepsPerFrame', 'Steps/Frame')} />
             <ToggleField label="Audio Inject" value={config.audioInject} onChange={(v) => update({ audioInject: v })} />
             <SelectField label="Seed Pattern"
                 value={config.seedPattern}
@@ -254,18 +286,21 @@ function FBOSimulationPanel({ layer, update }: PanelProps<'fbo-simulation'>) {
                     { value: 'gradient', label: 'Gradient' },
                     { value: 'noise', label: 'Noise' },
                 ] as { value: FBOSeedPattern; label: string }[])}
-                onChange={(v) => update({ seedPattern: v })} />
+                onChange={(v) => update({ seedPattern: v })}
+                modulatable={{ ...m('seedPattern', 'Seed Pattern', 'select'), selectValues: ['random-spots', 'center-seed', 'gradient', 'noise'] }} />
 
             {Object.keys(config.computeUniforms).length > 0 && (
                 <>
                     <SectionTitle>Compute Uniforms</SectionTitle>
-                    <UniformsEditor uniforms={config.computeUniforms} onChange={patchComputeUniform} />
+                    <UniformsEditor uniforms={config.computeUniforms} onChange={patchComputeUniform}
+                        modulatable={{ layerId: layer.id, uniformsPath: 'computeUniforms' }} />
                 </>
             )}
             {Object.keys(config.displayUniforms).length > 0 && (
                 <>
                     <SectionTitle>Display Uniforms</SectionTitle>
-                    <UniformsEditor uniforms={config.displayUniforms} onChange={patchDisplayUniform} />
+                    <UniformsEditor uniforms={config.displayUniforms} onChange={patchDisplayUniform}
+                        modulatable={{ layerId: layer.id, uniformsPath: 'displayUniforms' }} />
                 </>
             )}
         </>
@@ -274,6 +309,8 @@ function FBOSimulationPanel({ layer, update }: PanelProps<'fbo-simulation'>) {
 
 function Text2DPanel({ layer, update }: PanelProps<'text-2d'>) {
     const config = layer as Extract<LayerConfig, { type: 'text-2d' }>
+    const m = (prop: string, label: string, ft: 'number' | 'color-hue' | 'toggle' | 'select' = 'number') =>
+        ({ layerId: layer.id, propertyPath: prop, propertyLabel: label, fieldType: ft as import('../types/layers').ModulationFieldType })
     return (
         <>
             <SectionTitle>Content</SectionTitle>
@@ -281,14 +318,16 @@ function Text2DPanel({ layer, update }: PanelProps<'text-2d'>) {
             <TextInputField label="Font URL" value={config.fontFamily} placeholder="/fonts/my-font.woff (leave blank for default)"
                 onChange={(v) => update({ fontFamily: v })} />
             <SliderField label="Font Size" value={config.fontSize} min={0.1} max={5} step={0.05}
-                onChange={(v) => update({ fontSize: v })} />
-            <ColorField label="Color" value={config.color} onChange={(v) => update({ color: v })} />
+                onChange={(v) => update({ fontSize: v })} modulatable={m('fontSize', 'Font Size')} />
+            <ColorField label="Color" value={config.color} onChange={(v) => update({ color: v })}
+                modulatable={m('color', 'Color', 'color-hue')} />
 
             <SectionTitle>Transform</SectionTitle>
             <Vec2Field label="Position" value={config.position} min={-10} max={10} step={0.05}
-                onChange={(v) => update({ position: v })} />
+                onChange={(v) => update({ position: v })}
+                modulatable={{ layerId: layer.id, basePath: 'position', baseLabel: 'Position' }} />
             <SliderField label="Rotation" value={config.rotation} min={-Math.PI} max={Math.PI} step={0.01}
-                onChange={(v) => update({ rotation: v })} />
+                onChange={(v) => update({ rotation: v })} modulatable={m('rotation', 'Rotation')} />
 
             <SectionTitle>Audio</SectionTitle>
             <ToggleField label="Audio Reactive" value={config.audioReactive} onChange={(v) => update({ audioReactive: v })} />
@@ -306,33 +345,38 @@ function Text2DPanel({ layer, update }: PanelProps<'text-2d'>) {
 
 function Text3DPanel({ layer, update }: PanelProps<'text-3d'>) {
     const config = layer as Extract<LayerConfig, { type: 'text-3d' }>
+    const m = (prop: string, label: string, ft: 'number' | 'color-hue' | 'toggle' | 'select' = 'number') =>
+        ({ layerId: layer.id, propertyPath: prop, propertyLabel: label, fieldType: ft as import('../types/layers').ModulationFieldType })
     return (
         <>
             <SectionTitle>Content</SectionTitle>
             <TextareaField label="Text" value={config.text} onChange={(v) => update({ text: v })} />
             <SliderField label="Font Size" value={config.fontSize} min={0.1} max={5} step={0.05}
-                onChange={(v) => update({ fontSize: v })} />
+                onChange={(v) => update({ fontSize: v })} modulatable={m('fontSize', 'Font Size')} />
             <SliderField label="Depth" value={config.depth} min={0.01} max={2} step={0.01}
-                onChange={(v) => update({ depth: v })} />
+                onChange={(v) => update({ depth: v })} modulatable={m('depth', 'Depth')} />
 
             <SectionTitle>Material</SectionTitle>
             <SelectField label="Type" value={config.materialType || 'standard'}
                 options={[{ value: 'standard', label: 'Standard' }, { value: 'physical', label: 'Physical' }, { value: 'emissive', label: 'Emissive' }, { value: 'wireframe', label: 'Wireframe' }]}
-                onChange={(v) => update({ materialType: v })} />
-            <ColorField label="Color" value={config.color} onChange={(v) => update({ color: v })} />
+                onChange={(v) => update({ materialType: v })}
+                modulatable={{ ...m('materialType', 'Material', 'select'), selectValues: ['standard', 'physical', 'emissive', 'wireframe'] }} />
+            <ColorField label="Color" value={config.color} onChange={(v) => update({ color: v })}
+                modulatable={m('color', 'Color', 'color-hue')} />
             {(config.materialType === 'emissive') && (
                 <>
-                    <ColorField label="Emissive" value={config.emissive} onChange={(v) => update({ emissive: v })} />
+                    <ColorField label="Emissive" value={config.emissive} onChange={(v) => update({ emissive: v })}
+                        modulatable={m('emissive', 'Emissive Color', 'color-hue')} />
                     <SliderField label="Emissive Intensity" value={config.emissiveIntensity} min={0} max={5} step={0.05}
-                        onChange={(v) => update({ emissiveIntensity: v })} />
+                        onChange={(v) => update({ emissiveIntensity: v })} modulatable={m('emissiveIntensity', 'Emissive Int.')} />
                 </>
             )}
             {(config.materialType === 'standard' || config.materialType === 'physical') && (
                 <>
                     <SliderField label="Metalness" value={config.metalness ?? 0} min={0} max={1} step={0.01}
-                        onChange={(v) => update({ metalness: v })} />
+                        onChange={(v) => update({ metalness: v })} modulatable={m('metalness', 'Metalness')} />
                     <SliderField label="Roughness" value={config.roughness ?? 1} min={0} max={1} step={0.01}
-                        onChange={(v) => update({ roughness: v })} />
+                        onChange={(v) => update({ roughness: v })} modulatable={m('roughness', 'Roughness')} />
                 </>
             )}
             {config.materialType !== 'wireframe' && (
@@ -342,9 +386,11 @@ function Text3DPanel({ layer, update }: PanelProps<'text-3d'>) {
 
             <SectionTitle>Transform</SectionTitle>
             <Vec3Field label="Position" value={config.position} min={-10} max={10} step={0.05}
-                onChange={(v) => update({ position: v })} />
+                onChange={(v) => update({ position: v })}
+                modulatable={{ layerId: layer.id, basePath: 'position', baseLabel: 'Position' }} />
             <Vec3Field label="Rotation Speed" value={config.rotationSpeed} min={-3} max={3} step={0.01}
-                onChange={(v) => update({ rotationSpeed: v })} />
+                onChange={(v) => update({ rotationSpeed: v })}
+                modulatable={{ layerId: layer.id, basePath: 'rotationSpeed', baseLabel: 'Rot Speed' }} />
             <ToggleField label="Audio Reactive" value={config.audioReactive} onChange={(v) => update({ audioReactive: v })} />
         </>
     )
@@ -352,6 +398,8 @@ function Text3DPanel({ layer, update }: PanelProps<'text-3d'>) {
 
 function Model3DPanel({ layer, update }: PanelProps<'model-3d'>) {
     const config = layer as Extract<LayerConfig, { type: 'model-3d' }>
+    const m = (prop: string, label: string, ft: 'number' | 'color-hue' | 'toggle' | 'select' = 'number') =>
+        ({ layerId: layer.id, propertyPath: prop, propertyLabel: label, fieldType: ft as import('../types/layers').ModulationFieldType })
 
     const handleFilePick = () => {
         const input = document.createElement('input')
@@ -382,11 +430,13 @@ function Model3DPanel({ layer, update }: PanelProps<'model-3d'>) {
 
             <SectionTitle>Transform</SectionTitle>
             <SliderField label="Scale" value={config.scale} min={0.01} max={20} step={0.01}
-                onChange={(v) => update({ scale: v })} />
+                onChange={(v) => update({ scale: v })} modulatable={m('scale', 'Scale')} />
             <Vec3Field label="Position" value={config.position} min={-10} max={10} step={0.05}
-                onChange={(v) => update({ position: v })} />
+                onChange={(v) => update({ position: v })}
+                modulatable={{ layerId: layer.id, basePath: 'position', baseLabel: 'Position' }} />
             <Vec3Field label="Rotation Speed" value={config.rotationSpeed} min={-3} max={3} step={0.01}
-                onChange={(v) => update({ rotationSpeed: v })} />
+                onChange={(v) => update({ rotationSpeed: v })}
+                modulatable={{ layerId: layer.id, basePath: 'rotationSpeed', baseLabel: 'Rot Speed' }} />
 
             <SectionTitle>Behaviour</SectionTitle>
             <ToggleField label="Auto Rotate" value={config.autoRotate} onChange={(v) => update({ autoRotate: v })} />
@@ -398,6 +448,8 @@ function Model3DPanel({ layer, update }: PanelProps<'model-3d'>) {
 function Primitive3DPanel({ layer, update }: PanelProps<'primitive-3d'>) {
     const config = layer as Extract<LayerConfig, { type: 'primitive-3d' }>
     const shapeInfo = SHAPE_ARGS[config.shape]
+    const m = (prop: string, label: string, ft: 'number' | 'color-hue' | 'toggle' | 'select' = 'number') =>
+        ({ layerId: layer.id, propertyPath: prop, propertyLabel: label, fieldType: ft as import('../types/layers').ModulationFieldType })
 
     return (
         <>
@@ -405,47 +457,55 @@ function Primitive3DPanel({ layer, update }: PanelProps<'primitive-3d'>) {
             <SelectField label="Shape" value={config.shape}
                 options={(['sphere', 'box', 'torus', 'torusKnot', 'cylinder', 'cone', 'icosahedron', 'octahedron', 'dodecahedron'] as PrimitiveShape[])
                     .map((v) => ({ value: v, label: v }))}
-                onChange={(v) => update({ shape: v })} />
+                onChange={(v) => update({ shape: v })}
+                modulatable={{ ...m('shape', 'Shape', 'select'), selectValues: ['sphere', 'box', 'torus', 'torusKnot', 'cylinder', 'cone', 'icosahedron', 'octahedron', 'dodecahedron'] }} />
             {shapeInfo.labels.map((lbl, i) => (
                 <SliderField key={lbl} label={lbl}
                     value={config.shapeArgs[i] ?? shapeInfo.ranges[i][0]}
                     min={shapeInfo.ranges[i][0]} max={shapeInfo.ranges[i][1]} step={shapeInfo.steps[i]}
                     onChange={(v) => {
                         const next = [...config.shapeArgs]; next[i] = v; update({ shapeArgs: next })
-                    }} />
+                    }}
+                    modulatable={m(`shapeArgs.${i}`, lbl)} />
             ))}
 
             <SectionTitle>Material</SectionTitle>
             <SelectField label="Type" value={config.materialType}
                 options={[{ value: 'standard', label: 'Standard' }, { value: 'physical', label: 'Physical' }, { value: 'emissive', label: 'Emissive' }, { value: 'wireframe', label: 'Wireframe' }]}
-                onChange={(v) => update({ materialType: v })} />
-            <ColorField label="Color" value={config.color} onChange={(v) => update({ color: v })} />
+                onChange={(v) => update({ materialType: v })}
+                modulatable={{ ...m('materialType', 'Material', 'select'), selectValues: ['standard', 'physical', 'emissive', 'wireframe'] }} />
+            <ColorField label="Color" value={config.color} onChange={(v) => update({ color: v })}
+                modulatable={m('color', 'Color', 'color-hue')} />
             {(config.materialType === 'emissive') && (
                 <>
-                    <ColorField label="Emissive" value={config.emissive} onChange={(v) => update({ emissive: v })} />
+                    <ColorField label="Emissive" value={config.emissive} onChange={(v) => update({ emissive: v })}
+                        modulatable={m('emissive', 'Emissive Color', 'color-hue')} />
                     <SliderField label="Emissive Intensity" value={config.emissiveIntensity} min={0} max={5} step={0.05}
-                        onChange={(v) => update({ emissiveIntensity: v })} />
+                        onChange={(v) => update({ emissiveIntensity: v })} modulatable={m('emissiveIntensity', 'Emissive Int.')} />
                 </>
             )}
             {(config.materialType === 'standard' || config.materialType === 'physical') && (
                 <>
                     <SliderField label="Metalness" value={config.metalness} min={0} max={1} step={0.01}
-                        onChange={(v) => update({ metalness: v })} />
+                        onChange={(v) => update({ metalness: v })} modulatable={m('metalness', 'Metalness')} />
                     <SliderField label="Roughness" value={config.roughness} min={0} max={1} step={0.01}
-                        onChange={(v) => update({ roughness: v })} />
+                        onChange={(v) => update({ roughness: v })} modulatable={m('roughness', 'Roughness')} />
                 </>
             )}
             {config.materialType !== 'wireframe' && (
-                <ToggleField label="Wireframe" value={config.wireframe} onChange={(v) => update({ wireframe: v })} />
+                <ToggleField label="Wireframe" value={config.wireframe} onChange={(v) => update({ wireframe: v })}
+                    modulatable={m('wireframe', 'Wireframe', 'toggle')} />
             )}
 
             <SectionTitle>Transform</SectionTitle>
             <SliderField label="Scale" value={config.scale} min={0.01} max={10} step={0.01}
-                onChange={(v) => update({ scale: v })} />
+                onChange={(v) => update({ scale: v })} modulatable={m('scale', 'Scale')} />
             <Vec3Field label="Position" value={config.position} min={-10} max={10} step={0.05}
-                onChange={(v) => update({ position: v })} />
+                onChange={(v) => update({ position: v })}
+                modulatable={{ layerId: layer.id, basePath: 'position', baseLabel: 'Position' }} />
             <Vec3Field label="Rotation Speed" value={config.rotationSpeed} min={-3} max={3} step={0.01}
-                onChange={(v) => update({ rotationSpeed: v })} />
+                onChange={(v) => update({ rotationSpeed: v })}
+                modulatable={{ layerId: layer.id, basePath: 'rotationSpeed', baseLabel: 'Rot Speed' }} />
             <ToggleField label="Audio Reactive" value={config.audioReactive} onChange={(v) => update({ audioReactive: v })} />
         </>
     )
@@ -453,44 +513,50 @@ function Primitive3DPanel({ layer, update }: PanelProps<'primitive-3d'>) {
 
 function PostProcessingPanel({ layer, update }: PanelProps<'post-processing'>) {
     const config = layer as Extract<LayerConfig, { type: 'post-processing' }>
+    const m = (prop: string, label: string, ft: 'number' | 'color-hue' | 'toggle' | 'select' = 'number') =>
+        ({ layerId: layer.id, propertyPath: prop, propertyLabel: label, fieldType: ft as import('../types/layers').ModulationFieldType })
     return (
         <>
             <SectionTitle>Bloom</SectionTitle>
-            <ToggleField label="Enabled" value={config.bloomEnabled} onChange={(v) => update({ bloomEnabled: v })} />
+            <ToggleField label="Enabled" value={config.bloomEnabled} onChange={(v) => update({ bloomEnabled: v })}
+                modulatable={m('bloomEnabled', 'Bloom On', 'toggle')} />
             {config.bloomEnabled && (
                 <>
                     <SliderField label="Intensity" value={config.bloomIntensity} min={0} max={5} step={0.05}
-                        onChange={(v) => update({ bloomIntensity: v })} />
+                        onChange={(v) => update({ bloomIntensity: v })} modulatable={m('bloomIntensity', 'Bloom Int.')} />
                     <SliderField label="Threshold" value={config.bloomThreshold} min={0} max={1} step={0.01}
-                        onChange={(v) => update({ bloomThreshold: v })} />
+                        onChange={(v) => update({ bloomThreshold: v })} modulatable={m('bloomThreshold', 'Bloom Thresh.')} />
                     <SliderField label="Radius" value={config.bloomRadius} min={0} max={1} step={0.01}
-                        onChange={(v) => update({ bloomRadius: v })} />
+                        onChange={(v) => update({ bloomRadius: v })} modulatable={m('bloomRadius', 'Bloom Radius')} />
                 </>
             )}
 
             <SectionTitle>Chromatic Aberration</SectionTitle>
-            <ToggleField label="Enabled" value={config.chromaticEnabled} onChange={(v) => update({ chromaticEnabled: v })} />
+            <ToggleField label="Enabled" value={config.chromaticEnabled} onChange={(v) => update({ chromaticEnabled: v })}
+                modulatable={m('chromaticEnabled', 'Chroma On', 'toggle')} />
             {config.chromaticEnabled && (
                 <SliderField label="Offset" value={config.chromaticOffset} min={0} max={0.05} step={0.001}
-                    onChange={(v) => update({ chromaticOffset: v })} />
+                    onChange={(v) => update({ chromaticOffset: v })} modulatable={m('chromaticOffset', 'Chroma Offset')} />
             )}
 
             <SectionTitle>Vignette</SectionTitle>
-            <ToggleField label="Enabled" value={config.vignetteEnabled} onChange={(v) => update({ vignetteEnabled: v })} />
+            <ToggleField label="Enabled" value={config.vignetteEnabled} onChange={(v) => update({ vignetteEnabled: v })}
+                modulatable={m('vignetteEnabled', 'Vignette On', 'toggle')} />
             {config.vignetteEnabled && (
                 <>
                     <SliderField label="Darkness" value={config.vignetteDarkness} min={0} max={1} step={0.01}
-                        onChange={(v) => update({ vignetteDarkness: v })} />
+                        onChange={(v) => update({ vignetteDarkness: v })} modulatable={m('vignetteDarkness', 'Vignette Dark')} />
                     <SliderField label="Offset" value={config.vignetteOffset} min={0} max={1} step={0.01}
-                        onChange={(v) => update({ vignetteOffset: v })} />
+                        onChange={(v) => update({ vignetteOffset: v })} modulatable={m('vignetteOffset', 'Vignette Offset')} />
                 </>
             )}
 
             <SectionTitle>Noise</SectionTitle>
-            <ToggleField label="Enabled" value={config.noiseEnabled} onChange={(v) => update({ noiseEnabled: v })} />
+            <ToggleField label="Enabled" value={config.noiseEnabled} onChange={(v) => update({ noiseEnabled: v })}
+                modulatable={m('noiseEnabled', 'Noise On', 'toggle')} />
             {config.noiseEnabled && (
                 <SliderField label="Opacity" value={config.noiseOpacity} min={0} max={0.5} step={0.01}
-                    onChange={(v) => update({ noiseOpacity: v })} />
+                    onChange={(v) => update({ noiseOpacity: v })} modulatable={m('noiseOpacity', 'Noise Opacity')} />
             )}
 
             <SectionTitle>Audio</SectionTitle>
@@ -501,6 +567,8 @@ function PostProcessingPanel({ layer, update }: PanelProps<'post-processing'>) {
 
 function MirrorFXPanel({ layer, update }: PanelProps<'mirror-fx'>) {
     const config = layer as Extract<LayerConfig, { type: 'mirror-fx' }>
+    const m = (prop: string, label: string, ft: 'number' | 'color-hue' | 'toggle' | 'select' = 'number') =>
+        ({ layerId: layer.id, propertyPath: prop, propertyLabel: label, fieldType: ft as import('../types/layers').ModulationFieldType })
     return (
         <>
             <SectionTitle>Mirror Type</SectionTitle>
@@ -515,15 +583,16 @@ function MirrorFXPanel({ layer, update }: PanelProps<'mirror-fx'>) {
                     { value: '4', label: 'Kaleidoscope' },
                 ]}
                 onChange={(v) => update({ mode: parseInt(v, 10) })}
+                modulatable={{ ...m('mode', 'Mirror Mode', 'select'), selectValues: ['0', '1', '2', '3', '4'] }}
             />
 
             {config.mode === 4 && (
                 <>
                     <SectionTitle>Kaleidoscope</SectionTitle>
                     <SliderField label="Sides" value={config.sides} min={2} max={24} step={1}
-                        onChange={(v) => update({ sides: v })} />
+                        onChange={(v) => update({ sides: v })} modulatable={m('sides', 'Sides')} />
                     <SliderField label="Angle Offset" value={config.angle} min={0} max={Math.PI * 2} step={0.01}
-                        onChange={(v) => update({ angle: v })} />
+                        onChange={(v) => update({ angle: v })} modulatable={m('angle', 'Angle Offset')} />
                 </>
             )}
 
@@ -535,6 +604,8 @@ function MirrorFXPanel({ layer, update }: PanelProps<'mirror-fx'>) {
 
 function LightsPanel({ layer, update }: PanelProps<'lights'>) {
     const config = layer as Extract<LayerConfig, { type: 'lights' }>
+    const m = (prop: string, label: string, ft: 'number' | 'color-hue' | 'toggle' | 'select' = 'number') =>
+        ({ layerId: layer.id, propertyPath: prop, propertyLabel: label, fieldType: ft as import('../types/layers').ModulationFieldType })
 
     const updateDir = (i: number, patch: Partial<DirectionalLightConfig>) => {
         const next = config.dirLights.map((d, j) => j === i ? { ...d, ...patch } : d)
@@ -551,9 +622,10 @@ function LightsPanel({ layer, update }: PanelProps<'lights'>) {
             <ToggleField label="Enabled" value={config.ambientEnabled} onChange={(v) => update({ ambientEnabled: v })} />
             {config.ambientEnabled && (
                 <>
-                    <ColorField label="Color" value={config.ambientColor} onChange={(v) => update({ ambientColor: v })} />
+                    <ColorField label="Color" value={config.ambientColor} onChange={(v) => update({ ambientColor: v })}
+                        modulatable={m('ambientColor', 'Ambient Color', 'color-hue')} />
                     <SliderField label="Intensity" value={config.ambientIntensity} min={0} max={5} step={0.05}
-                        onChange={(v) => update({ ambientIntensity: v })} />
+                        onChange={(v) => update({ ambientIntensity: v })} modulatable={m('ambientIntensity', 'Ambient Int.')} />
                 </>
             )}
 
@@ -563,14 +635,20 @@ function LightsPanel({ layer, update }: PanelProps<'lights'>) {
                     <div className="attractor-block__header">
                         <span className="attractor-block__title">Dir {i + 1}</span>
                         <button className="attractor-block__remove"
-                            onClick={() => update({ dirLights: config.dirLights.filter((_, j) => j !== i) })}>✕</button>
+                            onClick={() => {
+                                usePresetStore.getState().removeSubItemModulations(layer.id, 'dirLights', i, config.dirLights.length - 1)
+                                update({ dirLights: config.dirLights.filter((_, j) => j !== i) })
+                            }}>✕</button>
                     </div>
                     <ToggleField label="Enabled" value={dl.enabled} onChange={(v) => updateDir(i, { enabled: v })} />
-                    <ColorField label="Color" value={dl.color} onChange={(v) => updateDir(i, { color: v })} />
+                    <ColorField label="Color" value={dl.color} onChange={(v) => updateDir(i, { color: v })}
+                        modulatable={m(`dirLights.${i}.color`, `Dir ${i + 1} Color`, 'color-hue')} />
                     <SliderField label="Intensity" value={dl.intensity} min={0} max={5} step={0.05}
-                        onChange={(v) => updateDir(i, { intensity: v })} />
+                        onChange={(v) => updateDir(i, { intensity: v })}
+                        modulatable={m(`dirLights.${i}.intensity`, `Dir ${i + 1} Int.`)} />
                     <Vec3Field label="Position" value={dl.position} min={-20} max={20} step={0.5}
-                        onChange={(v) => updateDir(i, { position: v })} />
+                        onChange={(v) => updateDir(i, { position: v })}
+                        modulatable={{ layerId: layer.id, basePath: `dirLights.${i}.position`, baseLabel: `Dir ${i + 1} Pos` }} />
                 </div>
             ))}
             <button className="add-layer-btn" style={{ marginTop: 4 }}
@@ -584,18 +662,26 @@ function LightsPanel({ layer, update }: PanelProps<'lights'>) {
                     <div className="attractor-block__header">
                         <span className="attractor-block__title">Point {i + 1}</span>
                         <button className="attractor-block__remove"
-                            onClick={() => update({ pointLights: config.pointLights.filter((_, j) => j !== i) })}>✕</button>
+                            onClick={() => {
+                                usePresetStore.getState().removeSubItemModulations(layer.id, 'pointLights', i, config.pointLights.length - 1)
+                                update({ pointLights: config.pointLights.filter((_, j) => j !== i) })
+                            }}>✕</button>
                     </div>
                     <ToggleField label="Enabled" value={pl.enabled} onChange={(v) => updatePoint(i, { enabled: v })} />
-                    <ColorField label="Color" value={pl.color} onChange={(v) => updatePoint(i, { color: v })} />
+                    <ColorField label="Color" value={pl.color} onChange={(v) => updatePoint(i, { color: v })}
+                        modulatable={m(`pointLights.${i}.color`, `Point ${i + 1} Color`, 'color-hue')} />
                     <SliderField label="Intensity" value={pl.intensity} min={0} max={10} step={0.1}
-                        onChange={(v) => updatePoint(i, { intensity: v })} />
+                        onChange={(v) => updatePoint(i, { intensity: v })}
+                        modulatable={m(`pointLights.${i}.intensity`, `Point ${i + 1} Int.`)} />
                     <Vec3Field label="Position" value={pl.position} min={-20} max={20} step={0.5}
-                        onChange={(v) => updatePoint(i, { position: v })} />
+                        onChange={(v) => updatePoint(i, { position: v })}
+                        modulatable={{ layerId: layer.id, basePath: `pointLights.${i}.position`, baseLabel: `Pt ${i + 1} Pos` }} />
                     <SliderField label="Distance" value={pl.distance} min={0} max={50} step={0.5}
-                        onChange={(v) => updatePoint(i, { distance: v })} />
+                        onChange={(v) => updatePoint(i, { distance: v })}
+                        modulatable={m(`pointLights.${i}.distance`, `Point ${i + 1} Dist.`)} />
                     <SliderField label="Decay" value={pl.decay} min={0} max={4} step={0.1}
-                        onChange={(v) => updatePoint(i, { decay: v })} />
+                        onChange={(v) => updatePoint(i, { decay: v })}
+                        modulatable={m(`pointLights.${i}.decay`, `Point ${i + 1} Decay`)} />
                 </div>
             ))}
             <button className="add-layer-btn" style={{ marginTop: 4 }}
@@ -607,7 +693,7 @@ function LightsPanel({ layer, update }: PanelProps<'lights'>) {
             <ToggleField label="Audio Reactive" value={config.audioReactive} onChange={(v) => update({ audioReactive: v })} />
             {config.audioReactive && (
                 <SliderField label="Beat Intensity" value={config.beatIntensity} min={0} max={3} step={0.05}
-                    onChange={(v) => update({ beatIntensity: v })} />
+                    onChange={(v) => update({ beatIntensity: v })} modulatable={m('beatIntensity', 'Beat Int.')} />
             )}
         </>
     )
@@ -618,6 +704,8 @@ function LightsPanel({ layer, update }: PanelProps<'lights'>) {
 function HydraPanel({ layer, update }: PanelProps<'hydra'>) {
     const config = layer as Extract<LayerConfig, { type: 'hydra' }>
     const [editorOpen, setEditorOpen] = useState(false)
+    const m = (prop: string, label: string, ft: 'number' | 'color-hue' | 'toggle' | 'select' = 'number') =>
+        ({ layerId: layer.id, propertyPath: prop, propertyLabel: label, fieldType: ft as import('../types/layers').ModulationFieldType })
 
     return (
         <>
@@ -642,6 +730,7 @@ function HydraPanel({ layer, update }: PanelProps<'hydra'>) {
                 options={(['plane', 'sphere', 'box', 'torus', 'torusKnot', 'cylinder'] as HydraProjection[])
                     .map((v) => ({ value: v, label: v }))}
                 onChange={(v) => update({ projection: v })}
+                modulatable={{ ...m('projection', 'Projection', 'select'), selectValues: ['plane', 'sphere', 'box', 'torus', 'torusKnot', 'cylinder'] }}
             />
 
             {config.projection !== 'plane' && (
@@ -650,6 +739,7 @@ function HydraPanel({ layer, update }: PanelProps<'hydra'>) {
                     value={config.scale}
                     min={0.1} max={10} step={0.1}
                     onChange={(v) => update({ scale: v })}
+                    modulatable={m('scale', 'Scale')}
                 />
             )}
 
@@ -667,6 +757,7 @@ function HydraPanel({ layer, update }: PanelProps<'hydra'>) {
                     value={config.position}
                     min={-20} max={20} step={0.1}
                     onChange={(v) => update({ position: v as [number, number, number] })}
+                    modulatable={{ layerId: layer.id, basePath: 'position', baseLabel: 'Position' }}
                 />
             )}
             <Vec3Field
@@ -674,12 +765,14 @@ function HydraPanel({ layer, update }: PanelProps<'hydra'>) {
                 value={config.rotation}
                 min={-Math.PI} max={Math.PI} step={0.01}
                 onChange={(v) => update({ rotation: v as [number, number, number] })}
+                modulatable={{ layerId: layer.id, basePath: 'rotation', baseLabel: 'Rotation' }}
             />
             <Vec3Field
                 label="Rotation Speed"
                 value={config.rotationSpeed}
                 min={-2} max={2} step={0.01}
                 onChange={(v) => update({ rotationSpeed: v as [number, number, number] })}
+                modulatable={{ layerId: layer.id, basePath: 'rotationSpeed', baseLabel: 'Rot Speed' }}
             />
 
             <SectionTitle>Audio</SectionTitle>
@@ -752,6 +845,8 @@ export function PropertiesPanel() {
     if (!layer) return null
 
     const update = (patch: Partial<LayerConfig>) => updateLayer(selectedLayerId, patch)
+    const m = (prop: string, label: string, ft: 'number' | 'color-hue' | 'toggle' | 'select' = 'number') =>
+        ({ layerId: layer.id, propertyPath: prop, propertyLabel: label, fieldType: ft as import('../types/layers').ModulationFieldType })
 
     return (
         <div className="properties-panel">
@@ -783,12 +878,14 @@ export function PropertiesPanel() {
                         value={layer.opacity}
                         min={0} max={1} step={0.01}
                         onChange={(v) => update({ opacity: v })}
+                        modulatable={m('opacity', 'Opacity')}
                     />
                     <SelectField
                         label="Blend Mode"
                         value={layer.blendMode}
                         options={BLEND_OPTIONS}
                         onChange={(v) => update({ blendMode: v })}
+                        modulatable={{ ...m('blendMode', 'Blend Mode', 'select'), selectValues: ['normal', 'additive', 'multiply', 'screen'] }}
                     />
                 </div>
 

@@ -1,9 +1,11 @@
-// SceneEditor — floating panel that composes the LayerStack (left) and
-// PropertiesPanel (right) into a single draggable editor window.
+// SceneEditor — floating panel that composes the LayerStack (left),
+// PropertiesPanel (center) and ModulationPanel (right) into a single
+// draggable editor window.
 import { useState, useRef, useCallback } from 'react'
 import { useGlobalStore } from '../engine/store'
 import { LayerStack } from './LayerStack'
 import { PropertiesPanel } from './PropertiesPanel'
+import { ModulationPanel } from './ModulationPanel'
 
 export function SceneEditor() {
     const editorOpen = useGlobalStore((s) => s.editorOpen)
@@ -60,10 +62,11 @@ export function SceneEditor() {
                 </button>
             </div>
 
-            {/* Two-column body */}
+            {/* Three-column body */}
             <div className="scene-editor-panel__body">
                 <LayerStack />
                 <PropertiesPanel />
+                <ModulationPanel />
             </div>
         </div>
     )
