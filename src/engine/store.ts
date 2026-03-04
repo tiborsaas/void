@@ -1,7 +1,12 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { TransitionType } from "../types";
-import type { EditorState, LayerConfig, ScenePreset } from "../types/layers";
+import type {
+  EditorState,
+  LayerConfig,
+  ModulationConfig,
+  ScenePreset,
+} from "../types/layers";
 
 // ─── Audio Refs (mutable, never triggers re-render) ──────────────────
 
@@ -70,6 +75,18 @@ interface PresetState {
   // Preset effects/transition
   setPresetEffects: (effects: ScenePreset["effects"]) => void;
   setPresetTransition: (transition: ScenePreset["transition"]) => void;
+
+  // Modulation CRUD
+  addModulation: (mod: ModulationConfig) => void;
+  removeModulation: (modId: string) => void;
+  updateModulation: (modId: string, updates: Partial<ModulationConfig>) => void;
+  /** Remove modulations for a deleted sub-item and re-index remaining ones */
+  removeSubItemModulations: (
+    layerId: string,
+    arrayPrefix: string,
+    removedIndex: number,
+    newArrayLength: number,
+  ) => void;
 }
 
 export const usePresetStore = create<PresetState>()(
@@ -158,6 +175,7 @@ export const usePresetStore = create<PresetState>()(
           id,
           name: "New Scene",
           layers: [],
+          modulations: [],
           effects: [],
           transition: { type: "crossfade", duration: 2.0 },
           tags: [],
@@ -194,6 +212,7 @@ export const usePresetStore = create<PresetState>()(
           const preset = JSON.parse(json) as ScenePreset;
           if (!preset.id || !preset.name || !preset.layers) return null;
           preset.builtIn = false;
+          if (!preset.modulations) preset.modulations = [];
           if (get().presets[preset.id]) {
             preset.id = `${preset.id}-imported-${Date.now()}`;
           }
@@ -219,6 +238,10 @@ export const usePresetStore = create<PresetState>()(
           const updated = {
             ...preset,
             layers: preset.layers.filter((l) => l.id !== layerId),
+            // Also remove any modulations targeting this layer
+            modulations: (preset.modulations ?? []).filter((m) =>
+              m.layerId !== layerId
+            ),
           };
           return { presets: { ...s.presets, [preset.id]: updated } };
         }),
@@ -283,6 +306,93 @@ export const usePresetStore = create<PresetState>()(
             presets: { ...s.presets, [preset.id]: { ...preset, transition } },
           };
         }),
+
+      // ─── Modulation CRUD ──────────────────────────────────────────────
+
+      addModulation: (mod) =>
+        set((s) => {
+          const preset = s.presets[s.activePresetId];
+          if (!preset) return s;
+          const mods = preset.modulations ?? [];
+          return {
+            presets: {
+              ...s.presets,
+              [preset.id]: { ...preset, modulations: [...mods, mod] },
+            },
+          };
+        }),
+
+      removeModulation: (modId) =>
+        set((s) => {
+          const preset = s.presets[s.activePresetId];
+          if (!preset) return s;
+          const mods = (preset.modulations ?? []).filter((m) => m.id !== modId);
+          return {
+            presets: {
+              ...s.presets,
+              [preset.id]: { ...preset, modulations: mods },
+            },
+          };
+        }),
+
+      updateModulation: (modId, updates) =>
+        set((s) => {
+          const preset = s.presets[s.activePresetId];
+          if (!preset) return s;
+          const mods = (preset.modulations ?? []).map((m) =>
+            m.id === modId ? { ...m, ...updates } : m
+          );
+          return {
+            presets: {
+              ...s.presets,
+              [preset.id]: { ...preset, modulations: mods },
+            },
+          };
+        }),
+
+      removeSubItemModulations: (
+        layerId,
+        arrayPrefix,
+        removedIndex,
+        newArrayLength,
+      ) =>
+        set((s) => {
+          const preset = s.presets[s.activePresetId];
+          if (!preset) return s;
+          const prefix = `${arrayPrefix}.`;
+          const removedPrefix = `${arrayPrefix}.${removedIndex}.`;
+          const mods = (preset.modulations ?? [])
+            // Remove modulations targeting the deleted sub-item
+            .filter((m) =>
+              !(m.layerId === layerId &&
+                m.propertyPath.startsWith(removedPrefix))
+            )
+            // Re-index modulations for items after the deleted index
+            .map((m) => {
+              if (
+                m.layerId !== layerId || !m.propertyPath.startsWith(prefix)
+              ) return m;
+              const rest = m.propertyPath.slice(prefix.length);
+              const dotPos = rest.indexOf(".");
+              const idx = parseInt(
+                dotPos >= 0 ? rest.slice(0, dotPos) : rest,
+                10,
+              );
+              if (isNaN(idx) || idx <= removedIndex) return m;
+              const newIdx = idx - 1;
+              const suffix = dotPos >= 0 ? rest.slice(dotPos) : "";
+              return {
+                ...m,
+                propertyPath: `${arrayPrefix}.${newIdx}${suffix}`,
+              };
+            });
+          return {
+            presets: {
+              ...s.presets,
+              [preset.id]: { ...preset, modulations: mods },
+            },
+          };
+        }),
     }),
     {
       name: "void-vj-presets",
@@ -290,6 +400,16 @@ export const usePresetStore = create<PresetState>()(
         presets: s.presets,
         activePresetId: s.activePresetId,
       }),
+      merge: (persisted, current) => {
+        const state = { ...current, ...(persisted as object) } as PresetState;
+        // Backward-compat: ensure every preset has modulations array
+        for (const id of Object.keys(state.presets)) {
+          if (!state.presets[id].modulations) {
+            state.presets[id] = { ...state.presets[id], modulations: [] };
+          }
+        }
+        return state;
+      },
     },
   ),
 );

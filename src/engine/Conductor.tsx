@@ -6,6 +6,7 @@ import { usePresetStore } from './store'
 import { SceneStack } from './SceneStack'
 import { useAudio } from '../hooks/useAudio'
 import { useClock } from '../hooks/useClock'
+import { evaluateModulations } from './ModulationEngine'
 
 // ─── Transition Shader ───────────────────────────────────────────────
 
@@ -173,8 +174,18 @@ export function Conductor() {
         }
     }, [isTransitioning, nextPresetId])
 
-    useFrame((state) => {
+    useFrame((state, delta) => {
         const { gl, camera } = state
+
+        // Evaluate modulations before layers render
+        const activePreset = usePresetStore.getState().presets[usePresetStore.getState().activePresetId]
+        if (activePreset) {
+            evaluateModulations(
+                activePreset.modulations ?? [],
+                state.clock.elapsedTime,
+                delta,
+            )
+        }
 
         if ('aspect' in camera && camera.aspect !== sceneCamera.aspect) {
             sceneCamera.aspect = camera.aspect as number
